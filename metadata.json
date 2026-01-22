@@ -1,0 +1,8 @@
+{
+  "name": "WALLNUT",
+  "description": "AI-powered strategic consulting platform implementing the LDE (Learn, Design, Execute) methodology. Features role-based access, data persistence, and automated video interviews for process mapping.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
