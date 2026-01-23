@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store';
 import { MarketBlockData } from '../types';
 import { AudioRecorder } from '../components/AudioRecorder';
+import { GroupInheritanceBar } from '../components/GroupInheritanceBar'; // IMPORTED
 import { transcribeAudio } from '../services/gemini';
 import { 
   TrendingUp, 
@@ -277,6 +278,10 @@ export const BlockMarket = () => {
 
         {/* Content */}
         <div className="lg:col-span-3">
+          
+          {/* Smart Inheritance Bar */}
+          <GroupInheritanceBar blockId={3} />
+
           {activeSection === '3.1' && <QuestionList title="Trend di Mercato" questions={QUESTIONS_3_1} data={marketData} update={updateMarketData} icon={TrendingUp} colorClass="bg-blue-600 text-blue-600" />}
           {activeSection === '3.2' && <QuestionList title="Analisi Competitor" questions={QUESTIONS_3_2} data={marketData} update={updateMarketData} icon={Target} colorClass="bg-amber-500 text-amber-500" />}
           {activeSection === '3.3' && <QuestionList title="Mappatura Clienti" questions={QUESTIONS_3_3} data={marketData} update={updateMarketData} icon={Users} colorClass="bg-purple-600 text-purple-600" />}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store';
 import { TechTool } from '../types';
 import { AudioRecorder } from '../components/AudioRecorder';
+import { GroupInheritanceBar } from '../components/GroupInheritanceBar'; // IMPORTED
 import { transcribeAudio } from '../services/gemini';
 import { 
   Server, 
@@ -562,6 +563,10 @@ export const BlockTechnology = () => {
 
         {/* Content */}
         <div className="lg:col-span-3">
+          
+          {/* Smart Inheritance Bar */}
+          <GroupInheritanceBar blockId={4} />
+
           {activeSection === '4.1' && <Section4_1 data={techData} update={updateTechData} />}
           {activeSection === '4.2' && <Section4_2 data={techData} update={updateTechData} />}
           {activeSection === '4.3' && <Section4_3 data={techData} update={updateTechData} />}

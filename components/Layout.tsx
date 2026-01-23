@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useApp } from '../store';
 import { Link, useLocation } from 'react-router-dom';
@@ -20,7 +19,9 @@ import {
   CheckCircle,
   Sparkles,
   Building2,
-  ChevronDown
+  ChevronDown,
+  Search,
+  Bell
 } from 'lucide-react';
 
 const SidebarItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active: boolean }) => (
@@ -115,47 +116,6 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
 
         <div className="flex-1 overflow-y-auto px-4 space-y-8 no-scrollbar">
           
-          {/* Company Selector (Only for Groups) */}
-          {isGroup && (
-            <div className="relative z-50">
-              <button 
-                onClick={() => setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
-                className="w-full flex items-center justify-between p-3 bg-white/60 border border-white/50 rounded-2xl shadow-sm hover:shadow-md transition-all group"
-              >
-                <div className="flex items-center space-x-3 overflow-hidden">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
-                    <Building2 size={16} />
-                  </div>
-                  <div className="text-left overflow-hidden">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide truncate">Azienda Attiva</p>
-                    <p className="text-xs font-bold text-slate-800 truncate">{currentCompany?.name}</p>
-                  </div>
-                </div>
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isCompanyDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {isCompanyDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 backdrop-blur-xl border border-white/50 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 origin-top">
-                  <div className="p-2 space-y-1">
-                    {organization?.companies.map(c => (
-                      <button
-                        key={c.id}
-                        onClick={() => handleCompanySwitch(c.id)}
-                        className={`w-full flex items-center space-x-3 p-2 rounded-xl text-left transition-colors ${
-                          c.id === activeCompanyId ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-600'
-                        }`}
-                      >
-                        <div className={`w-2 h-2 rounded-full ${c.id === activeCompanyId ? 'bg-indigo-500' : 'bg-slate-300'}`}></div>
-                        <span className="text-xs font-bold truncate">{c.name}</span>
-                        {c.isMain && <span className="ml-auto text-[9px] uppercase font-bold bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded">HQ</span>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Main Navigation */}
           <div className="space-y-1">
             <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" active={isActive('/')} />
@@ -225,16 +185,91 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
 
       {/* MAIN CONTENT CENTER */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative md:pl-80">
-        {/* Mobile Header */}
-        <header className="md:hidden h-20 flex items-center justify-between px-6 sticky top-0 z-40 bg-white/80 backdrop-blur-md">
-          <Logo showText size={24} />
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-600 bg-white rounded-full shadow-sm">
-            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+        
+        {/* TOP BAR / HEADER */}
+        <header className="h-24 px-8 flex items-center justify-between z-40 sticky top-0">
+          
+          {/* Mobile Toggle */}
+          <div className="md:hidden flex items-center">
+            <Logo showText size={24} />
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="ml-4 p-2 text-slate-600 bg-white rounded-full shadow-sm">
+              {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+
+          {/* Desktop Search (Placeholder) */}
+          <div className="hidden md:flex items-center bg-white/40 backdrop-blur-md border border-white/50 rounded-2xl px-4 py-2.5 w-64 focus-within:w-80 transition-all focus-within:bg-white/60 focus-within:shadow-md">
+            <Search size={18} className="text-slate-400" />
+            <input type="text" placeholder="Cerca nel workspace..." className="bg-transparent border-none outline-none text-sm ml-2 w-full text-slate-700 placeholder:text-slate-400" />
+          </div>
+
+          {/* RIGHT SIDE ACTIONS */}
+          <div className="flex items-center space-x-4 ml-auto">
+            
+            {/* Notification Bell */}
+            <button className="w-10 h-10 rounded-full bg-white/40 backdrop-blur-md border border-white/50 flex items-center justify-center text-slate-600 hover:bg-white hover:text-violet-600 transition-colors">
+              <Bell size={18} />
+            </button>
+
+            {/* COMPANY SELECTOR (TOP RIGHT) */}
+            {isGroup && (
+              <div className="relative">
+                <button 
+                  onClick={() => setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
+                  className="flex items-center space-x-3 pl-1 pr-4 py-1.5 bg-white/80 backdrop-blur-xl border border-white/60 rounded-full shadow-sm hover:shadow-lg hover:border-violet-200 transition-all group"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-inner">
+                    <Building2 size={14} />
+                  </div>
+                  <div className="text-left hidden sm:block">
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider leading-none">Azienda Attiva</p>
+                    <p className="text-sm font-bold text-slate-800 leading-tight truncate max-w-[120px]">{currentCompany?.name}</p>
+                  </div>
+                  <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isCompanyDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isCompanyDropdownOpen && (
+                  <div className="absolute top-full right-0 mt-3 w-64 bg-white/90 backdrop-blur-2xl border border-white/50 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 origin-top-right ring-1 ring-black/5">
+                    <div className="p-1.5 space-y-1">
+                      {organization?.companies.map(c => (
+                        <button
+                          key={c.id}
+                          onClick={() => handleCompanySwitch(c.id)}
+                          className={`w-full flex items-center space-x-3 p-3 rounded-xl text-left transition-all ${
+                            c.id === activeCompanyId 
+                              ? 'bg-violet-50 text-violet-700 shadow-sm ring-1 ring-violet-100' 
+                              : 'hover:bg-slate-50 text-slate-600'
+                          }`}
+                        >
+                          <div className={`w-2 h-2 rounded-full ${c.id === activeCompanyId ? 'bg-violet-500' : 'bg-slate-300'}`}></div>
+                          <div>
+                             <span className="text-sm font-bold block truncate">{c.name}</span>
+                             <span className="text-[10px] text-slate-400">{c.vat}</span>
+                          </div>
+                          {c.isMain && <span className="ml-auto text-[9px] uppercase font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">HQ</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+             
+             {/* Single Company Static Display */}
+            {!isGroup && (
+               <div className="flex items-center space-x-3 pl-1 pr-4 py-1.5 bg-white/40 backdrop-blur-md border border-white/50 rounded-full">
+                  <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center">
+                    <Building2 size={14} />
+                  </div>
+                  <span className="text-sm font-bold text-slate-700 hidden sm:block">{currentCompany?.name}</span>
+               </div>
+            )}
+
+          </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-24 md:pt-8 scroll-smooth">
-          <div className="max-w-7xl mx-auto pb-10">
+        <main className="flex-1 overflow-y-auto px-4 md:px-8 pb-10 scroll-smooth">
+          <div className="max-w-7xl mx-auto">
             {children}
           </div>
         </main>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store';
 import { IdentityBlockData } from '../types';
 import { AudioRecorder } from '../components/AudioRecorder';
+import { GroupInheritanceBar } from '../components/GroupInheritanceBar'; // IMPORTED
 import { transcribeAudio } from '../services/gemini';
 import { 
   Fingerprint, 
@@ -293,6 +294,10 @@ export const BlockIdentity = () => {
 
         {/* Content */}
         <div className="lg:col-span-3">
+          
+          {/* Smart Inheritance Bar */}
+          <GroupInheritanceBar blockId={2} />
+
           {activeSection === '2.1' && <QuestionList title="Corporate Identity" questions={QUESTIONS_2_1} data={identityData} update={updateIdentityData} icon={Fingerprint} colorClass="bg-blue-600 text-blue-600" />}
           {activeSection === '2.2' && <QuestionList title="Timeline Evolutiva" questions={QUESTIONS_2_2} data={identityData} update={updateIdentityData} icon={History} colorClass="bg-amber-500 text-amber-500" />}
           {activeSection === '2.3' && <QuestionList title="Piani di Sviluppo" questions={QUESTIONS_2_3} data={identityData} update={updateIdentityData} icon={Rocket} colorClass="bg-purple-600 text-purple-600" />}
