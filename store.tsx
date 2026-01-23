@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AppState, User, Role, LibraryItem, Company, OrganizationStructure, DocumentState, TechBlockData, ProfileBlockData, IdentityBlockData, MarketBlockData, Notification } from './types';
+import { AppState, User, Role, LibraryItem, Company, OrganizationStructure, DocumentState, TechBlockData, ProfileBlockData, IdentityBlockData, MarketBlockData, Notification, BlockStatus, CompanySnapshot } from './types';
 
 const INITIAL_TECH_DATA: TechBlockData = {
   erpUsed: '',
@@ -155,18 +156,21 @@ const INITIAL_MARKET_DATA: MarketBlockData = {
   satisfactionMonitoring: ''
 };
 
+const INITIAL_BLOCKS: { [key: number]: BlockStatus } = {
+  1: { id: 1, status: 'TODO', progress: 0 },
+  2: { id: 2, status: 'LOCKED', progress: 0 },
+  3: { id: 3, status: 'LOCKED', progress: 0 },
+  4: { id: 4, status: 'LOCKED', progress: 0 },
+  5: { id: 5, status: 'LOCKED', progress: 0 },
+};
+
 const INITIAL_STATE: AppState = {
   user: null,
   company: null,
   organization: null,
+  activeCompanyId: '',
   onboardingComplete: false,
-  blocks: {
-    1: { id: 1, status: 'TODO', progress: 0 },
-    2: { id: 2, status: 'LOCKED', progress: 0 },
-    3: { id: 3, status: 'LOCKED', progress: 0 },
-    4: { id: 4, status: 'LOCKED', progress: 0 },
-    5: { id: 5, status: 'LOCKED', progress: 0 },
-  },
+  blocks: INITIAL_BLOCKS,
   answers: {},
   documents: {},
   library: [],
@@ -174,6 +178,7 @@ const INITIAL_STATE: AppState = {
   profileData: INITIAL_PROFILE_DATA,
   identityData: INITIAL_IDENTITY_DATA,
   marketData: INITIAL_MARKET_DATA,
+  companySnapshots: {},
   audioAnswers: {},
   notifications: []
 };
@@ -199,6 +204,8 @@ interface AppContextType extends AppState {
   resetApp: () => void;
   addNotification: (type: 'success' | 'error' | 'info', message: string) => void;
   removeNotification: (id: string) => void;
+  switchCompany: (companyId: string) => void;
+  copyBlockData: (blockId: number, sourceCompanyId: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -208,17 +215,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Load from LocalStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem('wallnut_state_v3');
+    const saved = localStorage.getItem('wallnut_state_v3_multi');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Ensure data objects exist if loading from an older state version
+        // Migrations/Safety checks for old data
         if (!parsed.techData) parsed.techData = INITIAL_TECH_DATA;
         if (!parsed.profileData) parsed.profileData = INITIAL_PROFILE_DATA;
         if (!parsed.identityData) parsed.identityData = INITIAL_IDENTITY_DATA;
         if (!parsed.marketData) parsed.marketData = INITIAL_MARKET_DATA;
-        if (!parsed.audioAnswers) parsed.audioAnswers = {};
-        // Don't load notifications from storage
+        if (!parsed.companySnapshots) parsed.companySnapshots = {};
         parsed.notifications = [];
         setState(parsed);
       } catch (e) {
@@ -229,7 +235,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Save to LocalStorage on change
   useEffect(() => {
-    localStorage.setItem('wallnut_state_v3', JSON.stringify(state));
+    localStorage.setItem('wallnut_state_v3_multi', JSON.stringify(state));
   }, [state]);
 
   const addNotification = (type: 'success' | 'error' | 'info', message: string) => {
@@ -253,34 +259,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const login = (role: Role) => {
-    // Determine permissions based on role for demo
     let departmentId = undefined;
     let assignedBlocks: number[] = [];
 
     switch (role) {
-      case 'OWNER':
-        assignedBlocks = [1, 2, 3, 4, 5]; // Access everything
-        break;
-      case 'DELEGATE':
-        departmentId = 'hr'; // Demo: Delegate is HR Manager
-        assignedBlocks = [5]; // Only Execution/Processes
-        break;
-      case 'ADVISOR':
-        assignedBlocks = [1, 2, 3, 4]; // Strategy blocks
-        break;
-      case 'EMPLOYEE':
-        assignedBlocks = [5]; // Only interviews
-        break;
+      case 'OWNER': assignedBlocks = [1, 2, 3, 4, 5]; break;
+      case 'DELEGATE': departmentId = 'hr'; assignedBlocks = [5]; break;
+      case 'ADVISOR': assignedBlocks = [1, 2, 3, 4]; break;
+      case 'EMPLOYEE': assignedBlocks = [5]; break;
     }
 
     setState(prev => {
-      // If Owner, ensure all blocks are unlocked (TODO) instead of LOCKED
       const newBlocks = { ...prev.blocks };
       if (role === 'OWNER') {
          ([1, 2, 3, 4, 5] as const).forEach(id => {
-            if (newBlocks[id].status === 'LOCKED') {
-               newBlocks[id] = { ...newBlocks[id], status: 'TODO' };
-            }
+            if (newBlocks[id].status === 'LOCKED') newBlocks[id] = { ...newBlocks[id], status: 'TODO' };
          });
       }
 
@@ -303,6 +296,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const registerOwner = (userData: User, orgData: OrganizationStructure) => {
     const mainCompany = orgData.companies.find(c => c.isMain) || orgData.companies[0];
+    const initialSnapshots: Record<string, CompanySnapshot> = {};
+    
+    // Initialize snapshots for all companies
+    orgData.companies.forEach(c => {
+      initialSnapshots[c.id] = {
+        techData: INITIAL_TECH_DATA,
+        profileData: INITIAL_PROFILE_DATA,
+        identityData: INITIAL_IDENTITY_DATA,
+        marketData: INITIAL_MARKET_DATA,
+        blocks: INITIAL_BLOCKS,
+        documents: {}
+      };
+    });
+
     setState(prev => ({
       ...prev,
       user: {
@@ -319,7 +326,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         sector: mainCompany.outputType || 'General',
         employees: mainCompany.employeeCount || 'N/A'
       },
+      activeCompanyId: mainCompany.id,
+      companySnapshots: initialSnapshots,
       onboardingComplete: true,
+      // Initialize active block state
       blocks: {
         ...prev.blocks,
         1: { ...prev.blocks[1], status: 'TODO' },
@@ -330,6 +340,91 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }));
     addNotification('success', 'Workspace creato con successo!');
+  };
+
+  const switchCompany = (companyId: string) => {
+    setState(prev => {
+      // 1. Save current state to snapshot
+      const currentSnapshot: CompanySnapshot = {
+        techData: prev.techData,
+        profileData: prev.profileData,
+        identityData: prev.identityData,
+        marketData: prev.marketData,
+        blocks: prev.blocks,
+        documents: prev.documents
+      };
+
+      const updatedSnapshots = {
+        ...prev.companySnapshots,
+        [prev.activeCompanyId]: currentSnapshot
+      };
+
+      // 2. Load new company data
+      const targetSnapshot = updatedSnapshots[companyId] || {
+        techData: INITIAL_TECH_DATA,
+        profileData: INITIAL_PROFILE_DATA,
+        identityData: INITIAL_IDENTITY_DATA,
+        marketData: INITIAL_MARKET_DATA,
+        blocks: INITIAL_BLOCKS,
+        documents: {}
+      };
+
+      // 3. Find company details for UI
+      const companyDetails = prev.organization?.companies.find(c => c.id === companyId);
+
+      return {
+        ...prev,
+        activeCompanyId: companyId,
+        companySnapshots: updatedSnapshots,
+        // Load data into active state
+        techData: targetSnapshot.techData,
+        profileData: targetSnapshot.profileData,
+        identityData: targetSnapshot.identityData,
+        marketData: targetSnapshot.marketData,
+        blocks: targetSnapshot.blocks,
+        documents: targetSnapshot.documents,
+        // Update active company info
+        company: companyDetails ? {
+          name: companyDetails.name,
+          vat: companyDetails.vat,
+          sector: companyDetails.outputType || 'General',
+          employees: companyDetails.employeeCount || 'N/A'
+        } : prev.company
+      };
+    });
+    addNotification('info', 'Contesto aziendale aggiornato.');
+  };
+
+  const copyBlockData = (blockId: number, sourceCompanyId: string) => {
+    setState(prev => {
+      const sourceSnapshot = prev.companySnapshots[sourceCompanyId];
+      
+      if (!sourceSnapshot) {
+        addNotification('error', 'Dati azienda sorgente non trovati.');
+        return prev;
+      }
+
+      let newData = {};
+      let updatedState = { ...prev };
+
+      switch (blockId) {
+        case 1:
+          updatedState.profileData = { ...sourceSnapshot.profileData };
+          break;
+        case 2:
+          updatedState.identityData = { ...sourceSnapshot.identityData };
+          break;
+        case 3:
+          updatedState.marketData = { ...sourceSnapshot.marketData };
+          break;
+        case 4:
+          updatedState.techData = { ...sourceSnapshot.techData };
+          break;
+      }
+
+      return updatedState;
+    });
+    addNotification('success', 'Dati importati con successo!');
   };
 
   const logout = () => {
@@ -467,7 +562,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resetApp = () => {
-    localStorage.removeItem('wallnut_state_v3');
+    localStorage.removeItem('wallnut_state_v3_multi');
     setState(INITIAL_STATE);
     window.location.reload();
   };
@@ -494,7 +589,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateMarketData,
       resetApp,
       addNotification,
-      removeNotification
+      removeNotification,
+      switchCompany,
+      copyBlockData
     }}>
       {children}
     </AppContext.Provider>

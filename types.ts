@@ -1,3 +1,4 @@
+
 export type Role = 'OWNER' | 'DELEGATE' | 'ADVISOR' | 'EMPLOYEE';
 
 export type Priority = 'MUST' | 'SHOULD' | 'COULD' | 'WOULD';
@@ -284,20 +285,37 @@ export interface TechBlockData {
   toolFeedback: Record<string, string>; // key: toolId, value: frequency
 }
 
+// Snapshot of data for a specific company
+export interface CompanySnapshot {
+  techData: TechBlockData;
+  profileData: ProfileBlockData;
+  identityData: IdentityBlockData;
+  marketData: MarketBlockData;
+  blocks: { [key: number]: BlockStatus };
+  documents: { [key: string]: DocumentState };
+}
+
 export interface AppState {
   user: User | null;
-  company: Company | null;
+  company: Company | null; // Currently active company basic info
   organization: OrganizationStructure | null;
+  activeCompanyId: string; // ID of the company currently being edited
   onboardingComplete: boolean;
+  
+  // CURRENTLY LOADED DATA (Bound to UI)
   blocks: { [key: number]: BlockStatus };
   answers: { [key: string]: string }; 
-  documents: { [key: string]: DocumentState }; // Keyed by docId
+  documents: { [key: string]: DocumentState }; 
   library: LibraryItem[];
-  techData: TechBlockData; // Specialized store for Block 4
-  profileData: ProfileBlockData; // Specialized store for Block 1
-  identityData: IdentityBlockData; // Specialized store for Block 2
-  marketData: MarketBlockData; // Specialized store for Block 3
-  audioAnswers: Record<string, string>; // Key: "blockId_questionKey", Value: base64 string
+  techData: TechBlockData; 
+  profileData: ProfileBlockData; 
+  identityData: IdentityBlockData; 
+  marketData: MarketBlockData; 
+  
+  // STORAGE FOR MULTI-COMPANY
+  companySnapshots: Record<string, CompanySnapshot>;
+
+  audioAnswers: Record<string, string>; 
   notifications: Notification[];
 }
 

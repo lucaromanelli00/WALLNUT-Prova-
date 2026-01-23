@@ -1,8 +1,10 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store';
 import { ProfileBlockData, LibraryItem } from '../types';
 import { AudioRecorder } from '../components/AudioRecorder';
+import { GroupInheritanceBar } from '../components/GroupInheritanceBar';
 import { transcribeAudio } from '../services/gemini';
 import { 
   Users, 
@@ -399,6 +401,10 @@ export const BlockProfile = () => {
 
         {/* Content */}
         <div className="lg:col-span-3">
+          
+          {/* Smart Inheritance Bar */}
+          <GroupInheritanceBar blockId={1} />
+
           {activeSection === '1.1' && <Section1_1 data={profileData} update={updateProfileData} />}
           {activeSection === '1.2' && <Section1_2 data={profileData} update={updateProfileData} />}
           {activeSection === '1.3' && <Section1_3 data={profileData} update={updateProfileData} />}

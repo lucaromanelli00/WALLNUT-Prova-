@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { useApp } from '../store';
 import { Link, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
@@ -17,7 +18,9 @@ import {
   ChevronRight,
   Lock,
   CheckCircle,
-  Sparkles
+  Sparkles,
+  Building2,
+  ChevronDown
 } from 'lucide-react';
 
 const SidebarItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active: boolean }) => (
@@ -78,14 +81,22 @@ const BlockNavItem = ({ id, label, status, active, accessible }: { id: number, l
 };
 
 export const Layout = ({ children }: { children?: React.ReactNode }) => {
-  const { user, blocks, logout, resetApp } = useApp();
+  const { user, blocks, logout, resetApp, organization, activeCompanyId, switchCompany } = useApp();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
   const isBlockActive = (id: number) => location.pathname === `/blocks/${id}`;
 
   const isOwner = user?.role === 'OWNER';
+  const isGroup = organization?.type === 'GROUP';
+  const currentCompany = organization?.companies.find(c => c.id === activeCompanyId);
+
+  const handleCompanySwitch = (id: string) => {
+    switchCompany(id);
+    setIsCompanyDropdownOpen(false);
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -103,6 +114,48 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 space-y-8 no-scrollbar">
+          
+          {/* Company Selector (Only for Groups) */}
+          {isGroup && (
+            <div className="relative z-50">
+              <button 
+                onClick={() => setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
+                className="w-full flex items-center justify-between p-3 bg-white/60 border border-white/50 rounded-2xl shadow-sm hover:shadow-md transition-all group"
+              >
+                <div className="flex items-center space-x-3 overflow-hidden">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                    <Building2 size={16} />
+                  </div>
+                  <div className="text-left overflow-hidden">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide truncate">Azienda Attiva</p>
+                    <p className="text-xs font-bold text-slate-800 truncate">{currentCompany?.name}</p>
+                  </div>
+                </div>
+                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isCompanyDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isCompanyDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 backdrop-blur-xl border border-white/50 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 origin-top">
+                  <div className="p-2 space-y-1">
+                    {organization?.companies.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => handleCompanySwitch(c.id)}
+                        className={`w-full flex items-center space-x-3 p-2 rounded-xl text-left transition-colors ${
+                          c.id === activeCompanyId ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-600'
+                        }`}
+                      >
+                        <div className={`w-2 h-2 rounded-full ${c.id === activeCompanyId ? 'bg-indigo-500' : 'bg-slate-300'}`}></div>
+                        <span className="text-xs font-bold truncate">{c.name}</span>
+                        {c.isMain && <span className="ml-auto text-[9px] uppercase font-bold bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded">HQ</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Main Navigation */}
           <div className="space-y-1">
             <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" active={isActive('/')} />
