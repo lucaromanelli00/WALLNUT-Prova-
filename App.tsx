@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { useApp } from './store';
@@ -9,6 +10,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Documents } from './pages/Documents';
 import { Team } from './pages/Team';
 import { Info } from './pages/Info';
+import { Assessment } from './pages/Assessment'; // Imported
 import { BlockGeneric } from './pages/BlockGeneric';
 import { BlockExecution } from './pages/BlockExecution';
 import { BlockTechnology } from './pages/BlockTechnology';
@@ -45,6 +47,7 @@ const App = () => {
           </ProtectedRoute>
         } />
 
+        <Route path="/assessment" element={<ProtectedRoute><Assessment /></ProtectedRoute>} />
         <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
         <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
         <Route path="/info" element={<ProtectedRoute><Info /></ProtectedRoute>} />

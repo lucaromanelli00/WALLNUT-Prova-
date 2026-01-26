@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useApp } from '../store';
 import { Link, useLocation } from 'react-router-dom';
@@ -21,7 +22,8 @@ import {
   Building2,
   ChevronDown,
   Search,
-  Bell
+  Bell,
+  BarChart3
 } from 'lucide-react';
 
 const SidebarItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active: boolean }) => (
@@ -120,6 +122,7 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
           <div className="space-y-1">
             <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" active={isActive('/')} />
             <SidebarItem to="/documents" icon={FileText} label="Documenti" active={isActive('/documents')} />
+            <SidebarItem to="/assessment" icon={BarChart3} label="Assessment" active={isActive('/assessment')} />
             <SidebarItem to="/team" icon={Users} label="Team" active={isActive('/team')} />
             <SidebarItem to="/info" icon={Info} label="Info" active={isActive('/info')} />
           </div>

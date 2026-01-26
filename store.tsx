@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AppState, User, Role, LibraryItem, Company, OrganizationStructure, DocumentState, TechBlockData, ProfileBlockData, IdentityBlockData, MarketBlockData, Notification, BlockStatus, CompanySnapshot } from './types';
+import { AppState, User, Role, LibraryItem, Company, OrganizationStructure, DocumentState, TechBlockData, ProfileBlockData, IdentityBlockData, MarketBlockData, Notification, BlockStatus, CompanySnapshot, TeamMember } from './types';
 
 const INITIAL_TECH_DATA: TechBlockData = {
   erpUsed: '',
@@ -206,6 +206,7 @@ interface AppContextType extends AppState {
   removeNotification: (id: string) => void;
   switchCompany: (companyId: string) => void;
   copyBlockData: (blockId: number, sourceCompanyId: string) => void;
+  addTeamMember: (departmentId: string, member: TeamMember) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -264,7 +265,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     switch (role) {
       case 'OWNER': assignedBlocks = [1, 2, 3, 4, 5]; break;
-      case 'DELEGATE': departmentId = 'hr'; assignedBlocks = [5]; break;
+      case 'DELEGATE': departmentId = 'c1-risorse-umane-hr'; assignedBlocks = [5]; break; // Demo ID hardcoded for prototype
       case 'ADVISOR': assignedBlocks = [1, 2, 3, 4]; break;
       case 'EMPLOYEE': assignedBlocks = [5]; break;
     }
@@ -310,6 +311,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     });
 
+    // Ensure departments have members array initialized
+    const cleanDepartments = orgData.departments.map(d => ({
+      ...d,
+      members: d.members || []
+    }));
+
     setState(prev => ({
       ...prev,
       user: {
@@ -319,12 +326,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         assignedBlocks: [1, 2, 3, 4, 5],
         avatar: `https://ui-avatars.com/api/?name=${userData.name}&background=0F172A&color=fff`
       },
-      organization: orgData,
+      organization: { ...orgData, departments: cleanDepartments },
       company: {
         name: mainCompany.name,
         vat: mainCompany.vat,
         sector: mainCompany.outputType || 'General',
-        employees: mainCompany.employeeCount || 'N/A'
+        employees: mainCompany.employeeCount || 'N/A',
+        logo: mainCompany.logo // Transfer the logo
       },
       activeCompanyId: mainCompany.id,
       companySnapshots: initialSnapshots,
@@ -388,7 +396,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           name: companyDetails.name,
           vat: companyDetails.vat,
           sector: companyDetails.outputType || 'General',
-          employees: companyDetails.employeeCount || 'N/A'
+          employees: companyDetails.employeeCount || 'N/A',
+          logo: companyDetails.logo
         } : prev.company
       };
     });
@@ -404,7 +413,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return prev;
       }
 
-      let newData = {};
       let updatedState = { ...prev };
 
       switch (blockId) {
@@ -459,45 +467,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const saveAnswer = (key: string, value: string) => {
-    setState(prev => ({
-      ...prev,
-      answers: { ...prev.answers, [key]: value }
-    }));
+    setState(prev => ({ ...prev, answers: { ...prev.answers, [key]: value } }));
   };
 
   const saveAudioAnswer = (key: string, base64: string) => {
-    setState(prev => ({
-      ...prev,
-      audioAnswers: { ...prev.audioAnswers, [key]: base64 }
-    }));
-  };
-
-  const updateTechData = (data: Partial<TechBlockData>) => {
-    setState(prev => ({
-      ...prev,
-      techData: { ...prev.techData, ...data }
-    }));
-  };
-
-  const updateProfileData = (data: Partial<ProfileBlockData>) => {
-    setState(prev => ({
-      ...prev,
-      profileData: { ...prev.profileData, ...data }
-    }));
-  };
-
-  const updateIdentityData = (data: Partial<IdentityBlockData>) => {
-    setState(prev => ({
-      ...prev,
-      identityData: { ...prev.identityData, ...data }
-    }));
-  };
-
-  const updateMarketData = (data: Partial<MarketBlockData>) => {
-    setState(prev => ({
-      ...prev,
-      marketData: { ...prev.marketData, ...data }
-    }));
+    setState(prev => ({ ...prev, audioAnswers: { ...prev.audioAnswers, [key]: base64 } }));
   };
 
   const uploadDocument = (docId: string, fileName: string) => {
@@ -506,6 +480,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       documents: {
         ...prev.documents,
         [docId]: {
+          ...prev.documents[docId],
           docId,
           status: 'UPLOADED',
           file: fileName,
@@ -513,7 +488,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
     }));
-    addNotification('success', 'Documento caricato correttamente.');
+    addNotification('success', 'Documento caricato con successo!');
   };
 
   const assignDocument = (docId: string, assignee: { name: string, email: string, role: string }) => {
@@ -522,13 +497,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       documents: {
         ...prev.documents,
         [docId]: {
+          ...prev.documents[docId],
           docId,
           status: 'ASSIGNED',
           assignedTo: assignee
         }
       }
     }));
-    addNotification('success', `Task assegnato a ${assignee.name}`);
+    addNotification('success', `Documento assegnato a ${assignee.name}`);
   };
 
   const markDocumentAsNotAvailable = (docId: string) => {
@@ -537,6 +513,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       documents: {
         ...prev.documents,
         [docId]: {
+          ...prev.documents[docId],
           docId,
           status: 'NOT_AVAILABLE'
         }
@@ -546,19 +523,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addLibraryItem = (item: LibraryItem) => {
-    setState(prev => ({
-      ...prev,
-      library: [...prev.library, item]
-    }));
-    addNotification('success', 'Risorsa aggiunta alla Library');
+    setState(prev => ({ ...prev, library: [...prev.library, item] }));
   };
 
   const removeLibraryItem = (id: string) => {
-    setState(prev => ({
-      ...prev,
-      library: prev.library.filter(i => i.id !== id)
-    }));
-    addNotification('info', 'Risorsa rimossa');
+    setState(prev => ({ ...prev, library: prev.library.filter(i => i.id !== id) }));
+  };
+
+  const updateTechData = (data: Partial<TechBlockData>) => {
+    setState(prev => ({ ...prev, techData: { ...prev.techData, ...data } }));
+  };
+
+  const updateProfileData = (data: Partial<ProfileBlockData>) => {
+    setState(prev => ({ ...prev, profileData: { ...prev.profileData, ...data } }));
+  };
+
+  const updateIdentityData = (data: Partial<IdentityBlockData>) => {
+    setState(prev => ({ ...prev, identityData: { ...prev.identityData, ...data } }));
+  };
+
+  const updateMarketData = (data: Partial<MarketBlockData>) => {
+    setState(prev => ({ ...prev, marketData: { ...prev.marketData, ...data } }));
+  };
+
+  const addTeamMember = (departmentId: string, member: TeamMember) => {
+    setState(prev => {
+      if (!prev.organization) return prev;
+      
+      const updatedDepartments = prev.organization.departments.map(dept => {
+        if (dept.id === departmentId) {
+          return {
+            ...dept,
+            members: [...dept.members, member]
+          };
+        }
+        return dept;
+      });
+
+      return {
+        ...prev,
+        organization: {
+          ...prev.organization,
+          departments: updatedDepartments
+        }
+      };
+    });
+    addNotification('success', `Invito inviato a ${member.email}`);
   };
 
   const resetApp = () => {
@@ -568,13 +578,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <AppContext.Provider value={{
-      ...state,
-      login,
-      logout,
-      registerOwner,
-      updateCompany,
-      completeOnboarding,
+    <AppContext.Provider value={{ 
+      ...state, 
+      login, 
+      logout, 
+      registerOwner, 
+      updateCompany, 
+      completeOnboarding, 
       updateBlockProgress,
       saveAnswer,
       saveAudioAnswer,
@@ -591,7 +601,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addNotification,
       removeNotification,
       switchCompany,
-      copyBlockData
+      copyBlockData,
+      addTeamMember
     }}>
       {children}
     </AppContext.Provider>
@@ -600,6 +611,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 export const useApp = () => {
   const context = useContext(AppContext);
-  if (!context) throw new Error('useApp must be used within AppProvider');
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
   return context;
 };

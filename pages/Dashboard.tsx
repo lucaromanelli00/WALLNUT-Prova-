@@ -68,10 +68,10 @@ export const Dashboard = () => {
           </p>
 
           <div className="mt-10 flex space-x-4">
-             <button className="bg-white text-violet-700 px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-black/10 hover:scale-105 transition-transform flex items-center space-x-2">
+             <Link to="/assessment" className="bg-white text-violet-700 px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-black/10 hover:scale-105 transition-transform flex items-center space-x-2">
                <Zap size={20} className="fill-current" />
                <span>Analisi Rapida</span>
-             </button>
+             </Link>
              <button className="bg-white/10 text-white border border-white/20 px-8 py-3.5 rounded-2xl font-bold hover:bg-white/20 transition-colors backdrop-blur-md flex items-center space-x-2">
                <Target size={20} />
                <span>Vedi Obiettivi</span>
@@ -158,10 +158,27 @@ export const Dashboard = () => {
         <div className="lg:col-span-2 space-y-6">
            <h3 className="text-2xl font-bold text-slate-900 flex items-center px-2">
              <Clock className="mr-3 text-slate-400" size={24}/> 
-             Prossimi Passi
+             Attività in Evidenza
            </h3>
            
            <div className="space-y-4">
+             {/* NEW ASSESSMENT CARD */}
+             <div className="glass-panel p-6 rounded-3xl hover:bg-white transition-colors group cursor-pointer flex items-center justify-between border-l-8 border-l-emerald-500 bg-gradient-to-r from-emerald-50/50 to-white">
+               <div className="flex items-center space-x-6">
+                 <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-sm">
+                   <BarChart3 size={24} />
+                 </div>
+                 <div>
+                   <h4 className="text-lg font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">Nuovi Insight Disponibili</h4>
+                   <p className="text-slate-500 text-sm mt-1">L'IA ha elaborato 6 nuove analisi strategiche per la tua azienda.</p>
+                 </div>
+               </div>
+               <Link to="/assessment" className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all flex items-center space-x-2">
+                 <span>Vedi Report</span>
+                 <ArrowRight size={16} />
+               </Link>
+             </div>
+
              {blocks[1].progress < 100 && (
                <div className="glass-panel p-6 rounded-3xl hover:bg-white transition-colors group cursor-pointer flex items-center justify-between border-l-8 border-l-violet-500">
                  <div className="flex items-center space-x-6">
@@ -202,9 +219,15 @@ export const Dashboard = () => {
              <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-violet-200 to-fuchsia-200 rounded-full blur-3xl opacity-60"></div>
 
              <div className="relative z-10 flex flex-col items-center">
-               <div className="w-24 h-24 bg-white rounded-3xl shadow-xl flex items-center justify-center text-3xl font-bold text-violet-700 mb-6 transform rotate-3">
-                 {company?.name.charAt(0) || 'W'}
-               </div>
+               {company?.logo ? (
+                 <div className="w-32 h-32 bg-white rounded-3xl shadow-xl flex items-center justify-center mb-6 p-4 transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                   <img src={company.logo} alt="Company Logo" className="w-full h-full object-contain" />
+                 </div>
+               ) : (
+                 <div className="w-24 h-24 bg-white rounded-3xl shadow-xl flex items-center justify-center text-3xl font-bold text-violet-700 mb-6 transform rotate-3">
+                   {company?.name.charAt(0) || 'W'}
+                 </div>
+               )}
                
                <h4 className="font-extrabold text-2xl text-slate-900">{company?.name || 'Azienda Demo'}</h4>
                <p className="text-slate-500 font-medium mb-6">{company?.vat || 'P.IVA non presente'}</p>

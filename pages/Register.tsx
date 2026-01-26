@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store';
 import { Logo } from '../components/Logo';
@@ -20,7 +20,9 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
-  UserCheck
+  UserCheck,
+  Copy,
+  Image
 } from 'lucide-react';
 import { CompanyDetails, DepartmentConfig } from '../types';
 
@@ -83,22 +85,48 @@ export const Register = () => {
     { id: 'c1', name: '', vat: '', isMain: true, outputType: 'Product', geoPresence: 'National', sizeClass: 'Small', employeeCount: '' }
   ]);
   const [activeCompanyIndex, setActiveCompanyIndex] = useState(0); // For Details Step
+  const [activeDeptCompanyIndex, setActiveDeptCompanyIndex] = useState(0); // For Departments Step
 
-  // Departments
-  const [departments, setDepartments] = useState<DepartmentConfig[]>(
-    DEPARTMENTS_LIST.map(name => ({
-      id: name.toLowerCase().replace(/\s/g, '-'),
-      name,
-      enabled: false
-    }))
-  );
+  // Departments (Now stores ALL departments for ALL companies)
+  const [departments, setDepartments] = useState<DepartmentConfig[]>([]);
+
+  // Initialize departments when companies change
+  useEffect(() => {
+    // Generate department config for existing companies if not present
+    setDepartments(prevDepts => {
+      const newDepts = [...prevDepts];
+      
+      companies.forEach(company => {
+        // Check if this company already has its departments initialized
+        const hasDepts = newDepts.some(d => d.companyId === company.id);
+        
+        if (!hasDepts) {
+          // Add default departments for this company
+          DEPARTMENTS_LIST.forEach(name => {
+            newDepts.push({
+              id: `${company.id}-${name.toLowerCase().replace(/\s/g, '-')}`,
+              name,
+              companyId: company.id,
+              enabled: true, // Always enabled/mandatory now
+              isExternal: false,
+              owner: { firstName: '', lastName: '', email: '', role: '' },
+              members: [] // Initialize empty members list
+            });
+          });
+        }
+      });
+
+      // Cleanup: Remove departments for deleted companies
+      return newDepts.filter(d => companies.some(c => c.id === d.companyId));
+    });
+  }, [companies]);
 
   // --- Handlers ---
   const handleAddCompany = () => {
     setCompanies([
       ...companies, 
       { 
-        id: `c${companies.length + 1}`, 
+        id: `c${Date.now()}`, // Use timestamp to ensure unique ID
         name: '', 
         vat: '', 
         isMain: false,
@@ -115,6 +143,8 @@ export const Register = () => {
     const newCompanies = [...companies];
     newCompanies.splice(index, 1);
     setCompanies(newCompanies);
+    if (activeCompanyIndex >= index && activeCompanyIndex > 0) setActiveCompanyIndex(activeCompanyIndex - 1);
+    if (activeDeptCompanyIndex >= index && activeDeptCompanyIndex > 0) setActiveDeptCompanyIndex(activeDeptCompanyIndex - 1);
   };
 
   const updateCompany = (index: number, field: keyof CompanyDetails, value: any) => {
@@ -123,37 +153,66 @@ export const Register = () => {
     setCompanies(newCompanies);
   };
 
-  const toggleDepartment = (index: number) => {
-    const newDepts = [...departments];
-    newDepts[index].enabled = !newDepts[index].enabled;
-    // Reset owner if disabled
-    if (!newDepts[index].enabled) {
-      newDepts[index].owner = undefined;
-    } else {
-      // Initialize owner object
-      newDepts[index].owner = { firstName: '', lastName: '', email: '', role: '' };
-    }
-    setDepartments(newDepts);
-  };
-
-  const updateDeptOwner = (index: number, field: string, value: string) => {
-    const newDepts = [...departments];
-    if (newDepts[index].owner) {
-      newDepts[index].owner = { ...newDepts[index].owner!, [field]: value };
-      setDepartments(newDepts);
-    }
-  };
-
-  const assignOwnerToDept = (index: number) => {
-    const newDepts = [...departments];
-    if (newDepts[index].enabled) {
-      newDepts[index].owner = {
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        email: userData.email,
-        role: userData.role
+  const handleLogoUpload = (index: number, file: File) => {
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateCompany(index, 'logo', reader.result as string);
       };
-      setDepartments(newDepts);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const updateDeptOwner = (companyId: string, deptName: string, field: string, value: any) => {
+    setDepartments(prev => prev.map(d => {
+      if (d.companyId === companyId && d.name === deptName) {
+        if (field === 'isExternal') {
+           return { ...d, isExternal: value };
+        }
+        return { 
+          ...d, 
+          owner: { ...d.owner!, [field]: value } 
+        };
+      }
+      return d;
+    }));
+  };
+
+  const assignOwnerToDept = (companyId: string, deptName: string) => {
+    setDepartments(prev => prev.map(d => {
+      if (d.companyId === companyId && d.name === deptName) {
+        return {
+          ...d,
+          isExternal: false,
+          owner: {
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            email: userData.email,
+            role: userData.role
+          }
+        };
+      }
+      return d;
+    }));
+  };
+
+  const copyDelegateFromCompany = (targetCompanyId: string, sourceCompanyId: string, deptName: string) => {
+    const sourceDept = departments.find(d => d.companyId === sourceCompanyId && d.name === deptName);
+    const sourceCompanyName = companies.find(c => c.id === sourceCompanyId)?.name || 'altra azienda';
+    
+    if (sourceDept && sourceDept.owner) {
+      setDepartments(prev => prev.map(d => {
+        if (d.companyId === targetCompanyId && d.name === deptName) {
+          return {
+            ...d,
+            isExternal: sourceDept.isExternal,
+            owner: { ...sourceDept.owner! }
+          };
+        }
+        return d;
+      }));
+      // Visual feedback
+      alert(`Dati copiati da ${sourceCompanyName} per l'area ${deptName}`);
     }
   };
 
@@ -372,7 +431,30 @@ export const Register = () => {
                     placeholder="IT000..."
                   />
                 </div>
-                <div className="md:col-span-2">
+                {/* Upload Logo */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Logo Aziendale (Opzionale)</label>
+                  <div className="relative">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      className="hidden" 
+                      id={`logo-${index}`} 
+                      onChange={(e) => e.target.files && handleLogoUpload(index, e.target.files[0])} 
+                    />
+                    <label htmlFor={`logo-${index}`} className="flex items-center justify-between w-full px-3 py-2 bg-slate-50 border border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
+                      <span className="text-sm text-slate-600 truncate">{company.logo ? 'Logo caricato' : 'Carica Logo...'}</span>
+                      <Image size={16} className="text-slate-400" />
+                    </label>
+                  </div>
+                  {company.logo && (
+                    <div className="mt-2">
+                      <img src={company.logo} alt="Preview" className="h-8 w-auto object-contain rounded border border-slate-200" />
+                    </div>
+                  )}
+                </div>
+                {/* Upload Visura */}
+                <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Visura Camerale (PDF)</label>
                   <div className="relative">
                     <input type="file" className="hidden" id={`file-${index}`} onChange={(e) => updateCompany(index, 'visuraFile', e.target.files?.[0]?.name)} />
@@ -408,7 +490,8 @@ export const Register = () => {
     </div>
   );
 
-  // Step 4: Company Details (Loop logic needed if group, here simplified with tab selector)
+  // ... (Rest of the component remains the same)
+  // Step 4: Company Details
   const renderDetails = () => (
     <div className="max-w-2xl mx-auto space-y-6 animate-in slide-in-from-right-8 duration-500">
       <div>
@@ -510,7 +593,6 @@ export const Register = () => {
         <button onClick={() => setStep(3)} className="text-slate-500 font-semibold hover:text-slate-800">Indietro</button>
         <button 
           onClick={() => {
-            // Check if ALL companies have details filled
             const allValid = companies.every(c => c.employeeCount && c.outputType && c.geoPresence && c.sizeClass);
             if (allValid) setStep(5);
             else alert("Compila i dettagli per tutte le aziende del gruppo.");
@@ -524,7 +606,9 @@ export const Register = () => {
     </div>
   );
 
-  // Step 5: Roles Info
+  // ... (Rest of Step 5, 6, 7 and main component same as previous, just need to ensure correct closing)
+  
+  // Step 5: Roles Info (Static)
   const renderRolesInfo = () => (
     <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-right-8 duration-500">
       <div className="text-center mb-10">
@@ -573,86 +657,162 @@ export const Register = () => {
     </div>
   );
 
-  // Step 6: Functional Areas & Invites
-  const renderAreas = () => (
-    <div className="max-w-3xl mx-auto space-y-6 animate-in slide-in-from-right-8 duration-500">
-      <div>
-        <h2 className="text-3xl font-bold text-slate-900">Mappa Organizzativa</h2>
-        <p className="text-slate-500">Attiva le aree presenti e invita i responsabili (Delegati).</p>
-      </div>
+  // Step 6: Functional Areas & Invites (Group Support Added)
+  const renderAreas = () => {
+    const activeCompany = companies[activeDeptCompanyIndex];
+    const companyDepts = departments.filter(d => d.companyId === activeCompany.id);
+    const otherCompanies = companies.filter(c => c.id !== activeCompany.id);
 
-      <div className="space-y-4">
-        {departments.map((dept, index) => (
-          <div key={dept.id} className={`border rounded-2xl transition-all duration-300 ${dept.enabled ? 'bg-white border-blue-500 ring-1 ring-blue-500/20 shadow-md' : 'bg-slate-50 border-slate-200'}`}>
-            <div className="p-5 flex items-center justify-between cursor-pointer" onClick={() => toggleDepartment(index)}>
-              <div className="flex items-center space-x-3">
-                 <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${dept.enabled ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-400'}`}>
-                   <Layers size={20} />
-                 </div>
-                 <span className={`font-bold text-lg ${dept.enabled ? 'text-slate-900' : 'text-slate-400'}`}>{dept.name}</span>
-              </div>
-              <div className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ${dept.enabled ? 'bg-blue-600' : 'bg-slate-300'}`}>
-                 <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-300 ${dept.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
-              </div>
-            </div>
-            
-            {dept.enabled && (
-              <div className="px-5 pb-6 pt-2 border-t border-slate-100 animate-in fade-in slide-in-from-top-2">
-                <div className="flex justify-between items-center mb-3">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Invita Responsabile Area (Delegato)</p>
-                  <button 
-                    onClick={() => assignOwnerToDept(index)}
-                    className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
-                  >
-                    <UserCheck size={14} />
-                    <span>Assegna a me stesso</span>
-                  </button>
+    return (
+      <div className="max-w-3xl mx-auto space-y-6 animate-in slide-in-from-right-8 duration-500">
+        <div>
+          <h2 className="text-3xl font-bold text-slate-900">Mappa Organizzativa</h2>
+          <p className="text-slate-500">Definisci i responsabili per ogni area funzionale.</p>
+        </div>
+
+        {structureType === 'GROUP' && (
+          <div className="flex space-x-2 overflow-x-auto pb-2 border-b border-slate-100">
+            {companies.map((c, idx) => (
+              <button 
+                key={idx}
+                onClick={() => setActiveDeptCompanyIndex(idx)}
+                className={`px-4 py-2 rounded-t-xl text-sm font-bold whitespace-nowrap transition-colors border-b-2 ${
+                  activeDeptCompanyIndex === idx 
+                    ? 'border-blue-600 text-blue-600 bg-blue-50/50' 
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {c.name || `Azienda ${idx + 1}`}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="space-y-6">
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start space-x-3 text-sm text-blue-800">
+            <Info size={18} className="shrink-0 mt-0.5" />
+            <p>
+              Tutte le aree funzionali sono <strong>obbligatorie</strong> per garantire una mappatura completa. 
+              Se un'area è gestita da un consulente esterno, seleziona l'opzione apposita.
+            </p>
+          </div>
+
+          {companyDepts.map((dept, index) => (
+            <div key={dept.id} className="border border-slate-200 rounded-2xl bg-white shadow-sm overflow-hidden">
+              <div className="p-5 flex items-center justify-between bg-slate-50/50 border-b border-slate-100">
+                <div className="flex items-center space-x-3">
+                   <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                     <Layers size={20} />
+                   </div>
+                   <span className="font-bold text-lg text-slate-900">{dept.name}</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Copy Logic for Groups */}
+                {structureType === 'GROUP' && otherCompanies.length > 0 && (
+                  <div className="relative group">
+                    <button className="flex items-center space-x-1 text-xs font-bold text-slate-500 hover:text-blue-600 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                      <Copy size={14} />
+                      <span>Copia da...</span>
+                    </button>
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 hidden group-hover:block z-10">
+                      {otherCompanies.map(oc => (
+                        <button
+                          key={oc.id}
+                          onClick={() => copyDelegateFromCompany(activeCompany.id, oc.id, dept.name)}
+                          className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
+                        >
+                          {oc.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-5">
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Responsabile Area (Delegato)</p>
+                  
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center space-x-2 cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={dept.isExternal}
+                        onChange={(e) => updateDeptOwner(activeCompany.id, dept.name, 'isExternal', e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                      />
+                      <span className="text-xs font-medium text-slate-600">Gestito da Advisor Esterno</span>
+                    </label>
+
+                    <button 
+                      onClick={() => assignOwnerToDept(activeCompany.id, dept.name)}
+                      className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                      <UserCheck size={14} />
+                      <span>Assegna a me stesso</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${dept.isExternal ? 'opacity-90' : ''}`}>
                    <input 
                       type="text" 
                       placeholder="Nome"
-                      className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      className={`px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 ${dept.isExternal ? 'ring-2 ring-orange-100' : ''}`}
                       value={dept.owner?.firstName}
-                      onChange={e => updateDeptOwner(index, 'firstName', e.target.value)}
+                      onChange={e => updateDeptOwner(activeCompany.id, dept.name, 'firstName', e.target.value)}
                    />
                    <input 
                       type="text" 
                       placeholder="Cognome"
-                      className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      className={`px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 ${dept.isExternal ? 'ring-2 ring-orange-100' : ''}`}
                       value={dept.owner?.lastName}
-                      onChange={e => updateDeptOwner(index, 'lastName', e.target.value)}
+                      onChange={e => updateDeptOwner(activeCompany.id, dept.name, 'lastName', e.target.value)}
                    />
                    <input 
                       type="email" 
                       placeholder="Email Aziendale"
-                      className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      className={`px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 ${dept.isExternal ? 'ring-2 ring-orange-100' : ''}`}
                       value={dept.owner?.email}
-                      onChange={e => updateDeptOwner(index, 'email', e.target.value)}
+                      onChange={e => updateDeptOwner(activeCompany.id, dept.name, 'email', e.target.value)}
                    />
                    <input 
                       type="text" 
-                      placeholder="Ruolo (Job Title)"
-                      className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      placeholder={dept.isExternal ? "Ruolo (es. Consulente Esterno)" : "Ruolo (Job Title)"}
+                      className={`px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 ${dept.isExternal ? 'ring-2 ring-orange-100' : ''}`}
                       value={dept.owner?.role}
-                      onChange={e => updateDeptOwner(index, 'role', e.target.value)}
+                      onChange={e => updateDeptOwner(activeCompany.id, dept.name, 'role', e.target.value)}
                    />
                 </div>
               </div>
-            )}
-          </div>
-        ))}
-      </div>
+            </div>
+          ))}
+        </div>
 
-      <div className="flex justify-between pt-8">
-        <button onClick={() => setStep(5)} className="text-slate-500 font-semibold hover:text-slate-800">Indietro</button>
-        <button onClick={() => setStep(7)} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all flex items-center space-x-2">
-          <span>Vedi Riepilogo</span>
-          <ArrowRight size={18} />
-        </button>
+        <div className="flex justify-between pt-8">
+          <button onClick={() => setStep(5)} className="text-slate-500 font-semibold hover:text-slate-800">Indietro</button>
+          <button 
+            onClick={() => {
+              // Validate ALL departments for ALL companies
+              const allFilled = departments.every(d => 
+                d.owner?.firstName && d.owner?.lastName && d.owner?.email && d.owner?.role
+              );
+              
+              if (allFilled) {
+                setStep(7);
+              } else {
+                alert("Compila tutti i campi obbligatori per tutte le aree funzionali e per tutte le aziende.");
+              }
+            }}
+            className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all flex items-center space-x-2"
+          >
+            <span>Vedi Riepilogo</span>
+            <ArrowRight size={18} />
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Step 7: Summary
   const renderSummary = () => (
@@ -685,6 +845,7 @@ export const Register = () => {
               <div key={i} className="flex items-start justify-between p-4 bg-slate-50 rounded-xl">
                 <div>
                   <div className="flex items-center space-x-2">
+                    {c.logo && <img src={c.logo} alt="Logo" className="w-6 h-6 object-contain" />}
                     <span className="font-bold text-slate-800">{c.name}</span>
                     {c.isMain && <Shield size={14} className="text-blue-500" />}
                   </div>
@@ -704,25 +865,33 @@ export const Register = () => {
         {/* Departments & Invites */}
         <div className="p-6">
           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Team & Aree Attive</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             {departments.filter(d => d.enabled).map(d => (
-               <div key={d.id} className="border border-slate-200 rounded-xl p-4 flex items-start space-x-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                    <Layers size={16} />
-                  </div>
-                  <div className="overflow-hidden">
-                    <p className="font-bold text-sm text-slate-800 truncate">{d.name}</p>
-                    {d.owner?.firstName ? (
-                      <p className="text-xs text-slate-500 mt-1 truncate">
-                        Responsabile: <span className="text-slate-700 font-medium">{d.owner.firstName} {d.owner.lastName}</span>
-                      </p>
-                    ) : (
-                      <p className="text-xs text-amber-500 mt-1">Nessun responsabile assegnato</p>
-                    )}
-                  </div>
-               </div>
-             ))}
-          </div>
+          {companies.map((company) => {
+            const companyDepts = departments.filter(d => d.companyId === company.id);
+            return (
+              <div key={company.id} className="mb-6 last:mb-0">
+                <h5 className="font-bold text-slate-700 mb-2 flex items-center gap-2">
+                  <Building size={14} />
+                  {company.name}
+                </h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {companyDepts.map(d => (
+                    <div key={d.id} className={`border rounded-xl p-4 flex items-start space-x-3 ${d.isExternal ? 'border-orange-200 bg-orange-50/30' : 'border-slate-200'}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${d.isExternal ? 'bg-orange-100 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
+                          <Layers size={16} />
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="font-bold text-sm text-slate-800 truncate">{d.name}</p>
+                          <p className="text-xs text-slate-500 mt-1 truncate">
+                            {d.isExternal && <span className="text-orange-600 font-bold mr-1">[Advisor]</span>}
+                            <span className="text-slate-700 font-medium">{d.owner?.firstName} {d.owner?.lastName}</span>
+                          </p>
+                        </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

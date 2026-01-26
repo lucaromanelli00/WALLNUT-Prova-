@@ -14,22 +14,35 @@ export interface User {
   assignedBlocks: number[]; // Array of Block IDs allowed to access
 }
 
+export interface TeamMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  avatar?: string;
+}
+
 export interface DepartmentConfig {
   id: string;
   name: string;
-  enabled: boolean;
+  companyId?: string; // Optional: ID of the company this department belongs to
+  isExternal?: boolean; // Optional: Flag for external advisor management
+  enabled?: boolean; // Kept for compatibility, but logic effectively treats them as enabled
   owner?: {
     firstName: string;
     lastName: string;
     email: string;
     role: string;
   };
+  members: TeamMember[]; // List of invited employees/members
 }
 
 export interface CompanyDetails {
   id: string;
   name: string;
   vat: string;
+  logo?: string; // Base64 string
   visuraFile?: string;
   outputType?: 'Product' | 'Service' | 'Digital';
   geoPresence?: 'Local' | 'National' | 'Multinational';
@@ -48,6 +61,7 @@ export interface OrganizationStructure {
 export interface Company {
   name: string;
   vat: string;
+  logo?: string;
   employees: string;
   sector: string;
 }
