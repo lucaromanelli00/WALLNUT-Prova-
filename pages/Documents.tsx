@@ -17,7 +17,8 @@ import {
   Ban,
   CheckSquare,
   Square,
-  ArrowRight
+  ArrowRight,
+  ListFilter
 } from 'lucide-react';
 
 const PRIORITY_COLORS: Record<Priority, string> = {
@@ -37,9 +38,18 @@ const AREAS = [
   { id: 'legal', label: 'Legal & IP' },
 ];
 
+const PRIORITIES: { id: Priority | 'ALL', label: string }[] = [
+  { id: 'ALL', label: 'Tutte' },
+  { id: 'MUST', label: 'Must Have' },
+  { id: 'SHOULD', label: 'Should Have' },
+  { id: 'COULD', label: 'Could Have' },
+  { id: 'WOULD', label: 'Would Have' },
+];
+
 export const Documents = () => {
   const { user, documents, uploadDocument, assignDocument, markDocumentAsNotAvailable } = useApp();
   const [activeArea, setActiveArea] = useState('all');
+  const [activePriority, setActivePriority] = useState<Priority | 'ALL'>('ALL');
   
   // Modal State
   const [assignModalOpen, setAssignModalOpen] = useState<string | null>(null); // Doc ID
@@ -53,7 +63,10 @@ export const Documents = () => {
       // 1. Area Filter Check
       if (activeArea !== 'all' && doc.areaId !== activeArea) return false;
 
-      // 2. Permission Check
+      // 2. Priority Filter Check
+      if (activePriority !== 'ALL' && doc.priority !== activePriority) return false;
+
+      // 3. Permission Check
       if (user?.role === 'OWNER') return true; // Owners see everything
 
       // For non-owners:
@@ -66,7 +79,7 @@ export const Documents = () => {
 
       return isDirectlyAssigned || isDepartmentResponsibility;
     });
-  }, [activeArea, user, documents]);
+  }, [activeArea, activePriority, user, documents]);
 
   // Get unassigned docs for batch selection (excluding current one)
   const unassignedDocs = useMemo(() => {
@@ -138,8 +151,8 @@ export const Documents = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex space-x-2 overflow-x-auto pb-4 mb-6 no-scrollbar">
+      {/* Main Filter: Areas */}
+      <div className="flex space-x-2 overflow-x-auto pb-2 mb-4 no-scrollbar">
         {AREAS.map(area => (
           <button
             key={area.id}
@@ -155,16 +168,50 @@ export const Documents = () => {
         ))}
       </div>
 
+      {/* Secondary Filter: Priorities */}
+      <div className="flex items-center space-x-2 mb-6 overflow-x-auto pb-4 no-scrollbar">
+         <div className="flex items-center text-slate-400 mr-2 px-2">
+            <ListFilter size={16} />
+            <span className="text-xs font-bold uppercase tracking-wider ml-2">Priorità</span>
+         </div>
+         {PRIORITIES.map(p => {
+           const isActive = activePriority === p.id;
+           const colorClass = p.id !== 'ALL' ? PRIORITY_COLORS[p.id as Priority] : 'bg-slate-100 text-slate-600 border-slate-200';
+           
+           return (
+             <button
+               key={p.id}
+               onClick={() => setActivePriority(p.id)}
+               className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                 isActive 
+                   ? (p.id === 'ALL' ? 'bg-slate-800 text-white border-slate-800 shadow-md' : `${colorClass} ring-2 ring-offset-1 ring-slate-200 shadow-sm`)
+                   : (p.id === 'ALL' ? 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600 opacity-60 hover:opacity-100')
+               }`}
+             >
+               {p.label}
+             </button>
+           );
+         })}
+      </div>
+
       {/* Empty State / Table */}
       {filteredDocs.length === 0 ? (
         <div className="glass-panel rounded-[2rem] p-16 text-center shadow-sm">
           <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-6 text-slate-400 rotate-3">
             <ShieldAlert size={40} />
           </div>
-          <h3 className="text-2xl font-bold text-slate-800 mb-3">Nessun documento disponibile</h3>
+          <h3 className="text-2xl font-bold text-slate-800 mb-3">Nessun documento trovato</h3>
           <p className="text-slate-500 max-w-md mx-auto leading-relaxed">
-            Non hai permessi per visualizzare documenti in questa sezione o non ti sono stati ancora assegnati task dall'Owner.
+            Non ci sono documenti che corrispondono ai filtri selezionati o non hai i permessi necessari per visualizzarli.
           </p>
+          {(activeArea !== 'all' || activePriority !== 'ALL') && (
+            <button 
+              onClick={() => { setActiveArea('all'); setActivePriority('ALL'); }}
+              className="mt-6 text-blue-600 font-bold hover:underline"
+            >
+              Rimuovi filtri
+            </button>
+          )}
         </div>
       ) : (
         <div className="glass-panel rounded-[2.5rem] shadow-sm overflow-hidden border border-white/60">
@@ -172,7 +219,8 @@ export const Documents = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100 text-[11px] uppercase tracking-widest text-slate-400 font-bold">
-                  <th className="px-8 py-6">Documento</th>
+                  <th className="px-8 py-6">Codice</th>
+                  <th className="px-8 py-6 w-1/3">Documento</th>
                   <th className="px-8 py-6">Priorità</th>
                   <th className="px-8 py-6">Requisiti</th>
                   <th className="px-8 py-6">Stato</th>
@@ -187,39 +235,47 @@ export const Documents = () => {
                   const isNotAvailable = state?.status === 'NOT_AVAILABLE';
 
                   return (
-                    <tr key={doc.id} className="hover:bg-white/80 transition-colors group">
-                      <td className="px-8 py-5">
-                        <div className="flex items-center space-x-4">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs shadow-sm ${isNotAvailable ? 'bg-slate-100 text-slate-400' : 'bg-white border border-slate-100 text-slate-600'}`}>
-                            {doc.code}
+                    <tr key={doc.id} className="hover:bg-white/80 transition-all duration-200 group">
+                      <td className="px-8 py-5 align-middle">
+                        <div className={`h-11 w-14 rounded-xl flex items-center justify-center text-xs font-bold shadow-sm shrink-0 transition-colors ${
+                          isNotAvailable 
+                            ? 'bg-slate-100 text-slate-400 border border-slate-200' 
+                            : 'bg-white border border-slate-200 text-slate-600 group-hover:border-blue-200 group-hover:text-blue-600'
+                        }`}>
+                          {doc.code}
+                        </div>
+                      </td>
+                      <td className="px-8 py-5 align-middle">
+                        <div className="min-w-0">
+                          <div className={`font-bold text-base truncate pr-4 ${isNotAvailable ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-800'}`}>
+                            {doc.name}
                           </div>
-                          <div>
-                            <div className={`font-bold text-base ${isNotAvailable ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{doc.name}</div>
-                            <div className="text-xs font-semibold text-slate-400 mt-0.5">{doc.areaName}</div>
+                          <div className="text-[11px] font-semibold text-slate-400 mt-0.5 uppercase tracking-wide">
+                            {doc.areaName}
                           </div>
                         </div>
                       </td>
-                      <td className="px-8 py-5">
+                      <td className="px-8 py-5 align-middle">
                         <span className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide border ${PRIORITY_COLORS[doc.priority]}`}>
                           {doc.priority}
                         </span>
                       </td>
-                      <td className="px-8 py-5 text-sm font-medium text-slate-500">
+                      <td className="px-8 py-5 align-middle text-sm font-medium text-slate-500">
                         {doc.versionReq}
                       </td>
-                      <td className="px-8 py-5">
+                      <td className="px-8 py-5 align-middle">
                         {isUploaded ? (
-                          <div className="flex items-center space-x-2 text-emerald-600 font-bold text-sm bg-emerald-50 px-3 py-1.5 rounded-full w-fit">
+                          <div className="flex items-center space-x-2 text-emerald-600 font-bold text-sm bg-emerald-50 px-3 py-1.5 rounded-full w-fit border border-emerald-100">
                             <CheckCircle2 size={16} />
                             <span>Caricato</span>
                           </div>
                         ) : isAssigned ? (
-                          <div className="flex items-center space-x-2 text-amber-600 font-bold text-sm bg-amber-50 px-3 py-1.5 rounded-full w-fit">
+                          <div className="flex items-center space-x-2 text-amber-600 font-bold text-sm bg-amber-50 px-3 py-1.5 rounded-full w-fit border border-amber-100">
                             <Clock size={16} />
                             <span>In corso: {state.assignedTo?.name}</span>
                           </div>
                         ) : isNotAvailable ? (
-                          <div className="flex items-center space-x-2 text-slate-400 font-bold text-sm bg-slate-50 px-3 py-1.5 rounded-full w-fit">
+                          <div className="flex items-center space-x-2 text-slate-400 font-bold text-sm bg-slate-50 px-3 py-1.5 rounded-full w-fit border border-slate-100">
                             <Ban size={16} />
                             <span>N/A</span>
                           </div>
@@ -230,7 +286,7 @@ export const Documents = () => {
                           </div>
                         )}
                       </td>
-                      <td className="px-8 py-5 text-right">
+                      <td className="px-8 py-5 align-middle text-right">
                         {!isUploaded && !isNotAvailable && (
                           <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                             <div className="relative">
@@ -239,7 +295,7 @@ export const Documents = () => {
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
                                 onChange={() => handleFileUpload(doc.id)}
                               />
-                              <button className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 hover:scale-110 transition-all" title="Carica File">
+                              <button className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 hover:scale-110 transition-all border border-blue-100" title="Carica File">
                                 <Upload size={18} />
                               </button>
                             </div>
@@ -248,7 +304,7 @@ export const Documents = () => {
                             {(user?.role === 'OWNER' || (user?.role === 'DELEGATE' && user.departmentId === doc.areaId)) && (
                               <button 
                                 onClick={() => setAssignModalOpen(doc.id)}
-                                className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 hover:scale-110 transition-all" 
+                                className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 hover:scale-110 transition-all border border-slate-200" 
                                 title="Assegna a..."
                               >
                                 <UserPlus size={18} />
@@ -259,7 +315,7 @@ export const Documents = () => {
                             {doc.priority !== 'MUST' && (
                               <button
                                 onClick={() => markDocumentAsNotAvailable(doc.id)}
-                                className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-red-50 hover:text-red-500 hover:scale-110 transition-all"
+                                className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-red-50 hover:text-red-500 hover:scale-110 transition-all border border-slate-200 hover:border-red-100"
                                 title="Segna come Non Disponibile"
                               >
                                 <Ban size={18} />

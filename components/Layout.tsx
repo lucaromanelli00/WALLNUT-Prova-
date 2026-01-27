@@ -150,9 +150,10 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
                 id={4} label="Tecnologia" status={blocks[4].status} active={isBlockActive(4)} 
                 accessible={isOwner || (user?.assignedBlocks?.includes(4) ?? false)}
               />
+              {/* Block 5 is now permanently disabled for the prototype */}
               <BlockNavItem 
-                id={5} label="Execution & Processi" status={blocks[5].status} active={isBlockActive(5)} 
-                accessible={isOwner || (user?.assignedBlocks?.includes(5) ?? false)}
+                id={5} label="Execution & Processi" status="LOCKED" active={false} 
+                accessible={false}
               />
             </div>
           </div>
