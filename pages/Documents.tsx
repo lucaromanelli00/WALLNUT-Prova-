@@ -94,9 +94,11 @@ export const Documents = () => {
     });
   }, [filteredDocs, documents, assignModalOpen]);
 
-  const handleFileUpload = (docId: string) => {
-    const fileName = "documento_caricato.pdf";
-    uploadDocument(docId, fileName);
+  const handleFileUpload = (docId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadDocument(docId, file.name);
+    }
   };
 
   const handleCloseModal = () => {
@@ -291,7 +293,7 @@ export const Documents = () => {
                             <input 
                               type="file" 
                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                              onChange={() => handleFileUpload(doc.id)}
+                              onChange={(e) => handleFileUpload(doc.id, e)}
                             />
                             <button className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 hover:scale-105 transition-all border border-blue-100 shadow-sm" title="Carica File">
                               <Upload size={18} />

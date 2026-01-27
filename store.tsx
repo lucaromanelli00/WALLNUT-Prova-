@@ -211,12 +211,15 @@ interface AppContextType extends AppState {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// KEY CHANGED TO FORCE CLEAN SLATE
+const STORAGE_KEY = 'wallnut_prod_v1_clean';
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
 
   // Load from LocalStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem('wallnut_state_v3_multi');
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -236,7 +239,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Save to LocalStorage on change
   useEffect(() => {
-    localStorage.setItem('wallnut_state_v3_multi', JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
   const addNotification = (type: 'success' | 'error' | 'info', message: string) => {
@@ -265,7 +268,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     switch (role) {
       case 'OWNER': assignedBlocks = [1, 2, 3, 4, 5]; break;
-      case 'DELEGATE': departmentId = 'c1-risorse-umane-hr'; assignedBlocks = [5]; break; // Demo ID hardcoded for prototype
+      case 'DELEGATE': departmentId = 'temp-dept-id'; assignedBlocks = [5]; break; 
       case 'ADVISOR': assignedBlocks = [1, 2, 3, 4]; break;
       case 'EMPLOYEE': assignedBlocks = [5]; break;
     }
@@ -282,7 +285,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ...prev,
         user: {
           id: 'u1',
-          name: role === 'OWNER' ? 'Mario Rossi' : role === 'DELEGATE' ? 'Laura Bianchi' : role === 'ADVISOR' ? 'Carlo Verdi' : 'Giulia Neri',
+          name: role === 'OWNER' ? 'Mario Rossi' : 'Utente',
           email: 'user@wallnut.ai',
           role: role,
           departmentId,
@@ -572,7 +575,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resetApp = () => {
-    localStorage.removeItem('wallnut_state_v3_multi');
+    localStorage.removeItem(STORAGE_KEY);
     setState(INITIAL_STATE);
     window.location.reload();
   };

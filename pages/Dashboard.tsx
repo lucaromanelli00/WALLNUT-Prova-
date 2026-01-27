@@ -229,7 +229,7 @@ export const Dashboard = () => {
                  </div>
                )}
                
-               <h4 className="font-extrabold text-2xl text-slate-900">{company?.name || 'Azienda Demo'}</h4>
+               <h4 className="font-extrabold text-2xl text-slate-900">{company?.name || 'Nome Azienda'}</h4>
                <p className="text-slate-500 font-medium mb-6">{company?.vat || 'P.IVA non presente'}</p>
                
                <div className="w-full space-y-3">
