@@ -18,7 +18,8 @@ import {
   CheckSquare,
   Square,
   ArrowRight,
-  ListFilter
+  ListFilter,
+  MoreVertical
 } from 'lucide-react';
 
 const PRIORITY_COLORS: Record<Priority, string> = {
@@ -144,7 +145,7 @@ export const Documents = () => {
 
   return (
     <div className="pb-20 relative animate-in fade-in duration-500">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Documenti</h1>
           <p className="text-slate-500 mt-2 font-medium">Gestisci la raccolta dati per l'analisi LDE.</p>
@@ -170,7 +171,7 @@ export const Documents = () => {
 
       {/* Secondary Filter: Priorities */}
       <div className="flex items-center space-x-2 mb-6 overflow-x-auto pb-4 no-scrollbar">
-         <div className="flex items-center text-slate-400 mr-2 px-2">
+         <div className="flex items-center text-slate-400 mr-2 px-2 shrink-0">
             <ListFilter size={16} />
             <span className="text-xs font-bold uppercase tracking-wider ml-2">Priorità</span>
          </div>
@@ -182,7 +183,7 @@ export const Documents = () => {
              <button
                key={p.id}
                onClick={() => setActivePriority(p.id)}
-               className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+               className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${
                  isActive 
                    ? (p.id === 'ALL' ? 'bg-slate-800 text-white border-slate-800 shadow-md' : `${colorClass} ring-2 ring-offset-1 ring-slate-200 shadow-sm`)
                    : (p.id === 'ALL' ? 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600 opacity-60 hover:opacity-100')
@@ -194,7 +195,7 @@ export const Documents = () => {
          })}
       </div>
 
-      {/* Empty State / Table */}
+      {/* Content List */}
       {filteredDocs.length === 0 ? (
         <div className="glass-panel rounded-[2rem] p-16 text-center shadow-sm">
           <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-6 text-slate-400 rotate-3">
@@ -214,122 +215,118 @@ export const Documents = () => {
           )}
         </div>
       ) : (
-        <div className="glass-panel rounded-[2.5rem] shadow-sm overflow-hidden border border-white/60">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100 text-[11px] uppercase tracking-widest text-slate-400 font-bold">
-                  <th className="px-8 py-6">Codice</th>
-                  <th className="px-8 py-6 w-1/3">Documento</th>
-                  <th className="px-8 py-6">Priorità</th>
-                  <th className="px-8 py-6">Requisiti</th>
-                  <th className="px-8 py-6">Stato</th>
-                  <th className="px-8 py-6 text-right">Azioni</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filteredDocs.map((doc) => {
-                  const state = documents[doc.id];
-                  const isUploaded = state?.status === 'UPLOADED';
-                  const isAssigned = state?.status === 'ASSIGNED';
-                  const isNotAvailable = state?.status === 'NOT_AVAILABLE';
+        <div className="space-y-3">
+          {filteredDocs.map((doc) => {
+            const state = documents[doc.id];
+            const isUploaded = state?.status === 'UPLOADED';
+            const isAssigned = state?.status === 'ASSIGNED';
+            const isNotAvailable = state?.status === 'NOT_AVAILABLE';
 
-                  return (
-                    <tr key={doc.id} className="hover:bg-white/80 transition-all duration-200 group">
-                      <td className="px-8 py-5 align-middle">
-                        <div className={`h-11 w-14 rounded-xl flex items-center justify-center text-xs font-bold shadow-sm shrink-0 transition-colors ${
-                          isNotAvailable 
-                            ? 'bg-slate-100 text-slate-400 border border-slate-200' 
-                            : 'bg-white border border-slate-200 text-slate-600 group-hover:border-blue-200 group-hover:text-blue-600'
-                        }`}>
-                          {doc.code}
-                        </div>
-                      </td>
-                      <td className="px-8 py-5 align-middle">
-                        <div className="min-w-0">
-                          <div className={`font-bold text-base truncate pr-4 ${isNotAvailable ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-800'}`}>
-                            {doc.name}
-                          </div>
-                          <div className="text-[11px] font-semibold text-slate-400 mt-0.5 uppercase tracking-wide">
-                            {doc.areaName}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-8 py-5 align-middle">
-                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide border ${PRIORITY_COLORS[doc.priority]}`}>
+            return (
+              <div 
+                key={doc.id} 
+                className="bg-white/80 border border-slate-100 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between hover:shadow-lg hover:border-slate-200 hover:bg-white transition-all duration-300 group gap-4"
+              >
+                {/* Left Side: ID & Info */}
+                <div className="flex items-start space-x-4 flex-1">
+                  {/* ID Box */}
+                  <div className={`h-12 w-16 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm shrink-0 transition-colors ${
+                    isNotAvailable 
+                      ? 'bg-slate-100 text-slate-400 border border-slate-200' 
+                      : 'bg-white border border-slate-200 text-slate-600 group-hover:border-blue-200 group-hover:text-blue-600'
+                  }`}>
+                    {doc.code}
+                  </div>
+                  
+                  {/* Text Details */}
+                  <div className="min-w-0 flex-1">
+                    <h3 className={`font-bold text-lg leading-tight mb-1 truncate ${isNotAvailable ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-900'}`}>
+                      {doc.name}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                       <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{doc.areaName}</span>
+                       <span className="text-slate-300">•</span>
+                       <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wide border ${PRIORITY_COLORS[doc.priority]}`}>
                           {doc.priority}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5 align-middle text-sm font-medium text-slate-500">
-                        {doc.versionReq}
-                      </td>
-                      <td className="px-8 py-5 align-middle">
-                        {isUploaded ? (
-                          <div className="flex items-center space-x-2 text-emerald-600 font-bold text-sm bg-emerald-50 px-3 py-1.5 rounded-full w-fit border border-emerald-100">
-                            <CheckCircle2 size={16} />
-                            <span>Caricato</span>
-                          </div>
-                        ) : isAssigned ? (
-                          <div className="flex items-center space-x-2 text-amber-600 font-bold text-sm bg-amber-50 px-3 py-1.5 rounded-full w-fit border border-amber-100">
-                            <Clock size={16} />
-                            <span>In corso: {state.assignedTo?.name}</span>
-                          </div>
-                        ) : isNotAvailable ? (
-                          <div className="flex items-center space-x-2 text-slate-400 font-bold text-sm bg-slate-50 px-3 py-1.5 rounded-full w-fit border border-slate-100">
-                            <Ban size={16} />
-                            <span>N/A</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center space-x-2 text-slate-400 text-sm px-3 py-1.5">
-                            <AlertCircle size={16} />
-                            <span>Mancante</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-8 py-5 align-middle text-right">
-                        {!isUploaded && !isNotAvailable && (
-                          <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                            <div className="relative">
-                              <input 
-                                type="file" 
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                                onChange={() => handleFileUpload(doc.id)}
-                              />
-                              <button className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 hover:scale-110 transition-all border border-blue-100" title="Carica File">
-                                <Upload size={18} />
-                              </button>
-                            </div>
-                            
-                            {/* Only owners or department heads can assign to others */}
-                            {(user?.role === 'OWNER' || (user?.role === 'DELEGATE' && user.departmentId === doc.areaId)) && (
-                              <button 
-                                onClick={() => setAssignModalOpen(doc.id)}
-                                className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 hover:scale-110 transition-all border border-slate-200" 
-                                title="Assegna a..."
-                              >
-                                <UserPlus size={18} />
-                              </button>
-                            )}
+                       </span>
+                       <span className="hidden sm:inline text-slate-300">•</span>
+                       <span className="hidden sm:inline text-xs text-slate-500">{doc.versionReq}</span>
+                    </div>
+                  </div>
+                </div>
 
-                            {/* Mark as Not Available - Only for NON-MUST documents */}
-                            {doc.priority !== 'MUST' && (
-                              <button
-                                onClick={() => markDocumentAsNotAvailable(doc.id)}
-                                className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-red-50 hover:text-red-500 hover:scale-110 transition-all border border-slate-200 hover:border-red-100"
-                                title="Segna come Non Disponibile"
-                              >
-                                <Ban size={18} />
-                              </button>
-                            )}
+                {/* Right Side: Status & Actions */}
+                <div className="flex items-center justify-between md:justify-end gap-4 pl-20 md:pl-0">
+                  
+                  {/* Status Badge */}
+                  <div>
+                    {isUploaded ? (
+                      <div className="flex items-center space-x-2 text-emerald-600 font-bold text-xs bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
+                        <CheckCircle2 size={14} />
+                        <span>Caricato</span>
+                      </div>
+                    ) : isAssigned ? (
+                      <div className="flex items-center space-x-2 text-amber-600 font-bold text-xs bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100">
+                        <Clock size={14} />
+                        <span className="truncate max-w-[100px]">In corso: {state.assignedTo?.name.split(' ')[0]}</span>
+                      </div>
+                    ) : isNotAvailable ? (
+                      <div className="flex items-center space-x-2 text-slate-400 font-bold text-xs bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+                        <Ban size={14} />
+                        <span>N/A</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2 text-slate-400 text-xs px-3 py-1.5 font-medium">
+                        <AlertCircle size={14} />
+                        <span>Mancante</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2">
+                     {!isUploaded && !isNotAvailable && (
+                        <>
+                          <div className="relative">
+                            <input 
+                              type="file" 
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                              onChange={() => handleFileUpload(doc.id)}
+                            />
+                            <button className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 hover:scale-105 transition-all border border-blue-100 shadow-sm" title="Carica File">
+                              <Upload size={18} />
+                            </button>
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          
+                          {/* Assign Button */}
+                          {(user?.role === 'OWNER' || (user?.role === 'DELEGATE' && user.departmentId === doc.areaId)) && (
+                            <button 
+                              onClick={() => setAssignModalOpen(doc.id)}
+                              className="p-2 bg-white text-slate-500 rounded-lg hover:bg-slate-100 hover:text-slate-800 transition-all border border-slate-200 shadow-sm" 
+                              title="Assegna a..."
+                            >
+                              <UserPlus size={18} />
+                            </button>
+                          )}
+
+                          {/* N/A Button */}
+                          {doc.priority !== 'MUST' && (
+                            <button
+                              onClick={() => markDocumentAsNotAvailable(doc.id)}
+                              className="p-2 bg-white text-slate-400 rounded-lg hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all border border-slate-200 shadow-sm"
+                              title="Non Disponibile"
+                            >
+                              <Ban size={18} />
+                            </button>
+                          )}
+                        </>
+                     )}
+                  </div>
+
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
