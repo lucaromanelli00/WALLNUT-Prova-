@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store';
 import { Logo } from '../components/Logo';
@@ -22,7 +22,8 @@ import {
   Info,
   UserCheck,
   Copy,
-  Image
+  Image,
+  X
 } from 'lucide-react';
 import { CompanyDetails, DepartmentConfig } from '../types';
 
@@ -64,7 +65,7 @@ const StepIndicator = ({ currentStep, totalSteps }: { currentStep: number, total
 
 export const Register = () => {
   const navigate = useNavigate();
-  const { registerOwner } = useApp();
+  const { registerOwner, addNotification } = useApp();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -89,6 +90,9 @@ export const Register = () => {
 
   // Departments (Now stores ALL departments for ALL companies)
   const [departments, setDepartments] = useState<DepartmentConfig[]>([]);
+  
+  // Dropdown state for Copy functionality
+  const [openCopyDropdown, setOpenCopyDropdown] = useState<string | null>(null);
 
   // Initialize departments when companies change
   useEffect(() => {
@@ -200,19 +204,37 @@ export const Register = () => {
     const sourceDept = departments.find(d => d.companyId === sourceCompanyId && d.name === deptName);
     const sourceCompanyName = companies.find(c => c.id === sourceCompanyId)?.name || 'altra azienda';
     
+    // Close dropdown
+    setOpenCopyDropdown(null);
+
     if (sourceDept && sourceDept.owner) {
+      // Validate source data existence
+      const hasData = sourceDept.owner.firstName || sourceDept.owner.email || sourceDept.isExternal;
+
+      if (!hasData) {
+        addNotification('info', `Nessun dato presente in ${sourceCompanyName} per l'area ${deptName}.`);
+        return;
+      }
+
       setDepartments(prev => prev.map(d => {
         if (d.companyId === targetCompanyId && d.name === deptName) {
           return {
             ...d,
             isExternal: sourceDept.isExternal,
-            owner: { ...sourceDept.owner! }
+            owner: { 
+              firstName: sourceDept.owner?.firstName || '',
+              lastName: sourceDept.owner?.lastName || '',
+              email: sourceDept.owner?.email || '',
+              role: sourceDept.owner?.role || ''
+            }
           };
         }
         return d;
       }));
-      // Visual feedback
-      alert(`Dati copiati da ${sourceCompanyName} per l'area ${deptName}`);
+      
+      addNotification('success', `Dati copiati da ${sourceCompanyName}.`);
+    } else {
+      addNotification('error', 'Errore nel recupero dati.');
     }
   };
 
@@ -490,7 +512,6 @@ export const Register = () => {
     </div>
   );
 
-  // ... (Rest of the component remains the same)
   // Step 4: Company Details
   const renderDetails = () => (
     <div className="max-w-2xl mx-auto space-y-6 animate-in slide-in-from-right-8 duration-500">
@@ -606,8 +627,6 @@ export const Register = () => {
     </div>
   );
 
-  // ... (Rest of Step 5, 6, 7 and main component same as previous, just need to ensure correct closing)
-  
   // Step 5: Roles Info (Static)
   const renderRolesInfo = () => (
     <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-right-8 duration-500">
@@ -697,96 +716,112 @@ export const Register = () => {
             </p>
           </div>
 
-          {companyDepts.map((dept, index) => (
-            <div key={dept.id} className="border border-slate-200 rounded-2xl bg-white shadow-sm overflow-hidden">
-              <div className="p-5 flex items-center justify-between bg-slate-50/50 border-b border-slate-100">
-                <div className="flex items-center space-x-3">
-                   <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                     <Layers size={20} />
-                   </div>
-                   <span className="font-bold text-lg text-slate-900">{dept.name}</span>
+          {companyDepts.map((dept, index) => {
+            const isDropdownOpen = openCopyDropdown === dept.id;
+
+            return (
+              <div key={dept.id} className="border border-slate-200 rounded-2xl bg-white shadow-sm overflow-visible">
+                <div className="p-5 flex items-center justify-between bg-slate-50/50 border-b border-slate-100 rounded-t-2xl relative">
+                  <div className="flex items-center space-x-3">
+                     <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                       <Layers size={20} />
+                     </div>
+                     <span className="font-bold text-lg text-slate-900">{dept.name}</span>
+                  </div>
+                  
+                  {/* Copy Logic for Groups */}
+                  {structureType === 'GROUP' && otherCompanies.length > 0 && (
+                    <div className="relative">
+                      <button 
+                        type="button"
+                        onClick={() => setOpenCopyDropdown(isDropdownOpen ? null : dept.id)}
+                        className={`flex items-center space-x-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${isDropdownOpen ? 'bg-blue-100 text-blue-700' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-100'}`}
+                      >
+                        <Copy size={14} />
+                        <span>Copia da...</span>
+                        {isDropdownOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+                      
+                      {isDropdownOpen && (
+                        <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-50 animate-in fade-in zoom-in-95">
+                          <div className="text-[10px] uppercase font-bold text-slate-400 px-3 py-1 mb-1">Seleziona Fonte</div>
+                          {otherCompanies.map(oc => (
+                            <button
+                              key={oc.id}
+                              type="button"
+                              onClick={() => copyDelegateFromCompany(activeCompany.id, oc.id, dept.name)}
+                              className="w-full text-left px-3 py-2 text-sm font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors flex items-center justify-between group"
+                            >
+                              <span>{oc.name}</span>
+                              <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 text-blue-500" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
-                {/* Copy Logic for Groups */}
-                {structureType === 'GROUP' && otherCompanies.length > 0 && (
-                  <div className="relative group">
-                    <button className="flex items-center space-x-1 text-xs font-bold text-slate-500 hover:text-blue-600 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-                      <Copy size={14} />
-                      <span>Copia da...</span>
-                    </button>
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 hidden group-hover:block z-10">
-                      {otherCompanies.map(oc => (
-                        <button
-                          key={oc.id}
-                          onClick={() => copyDelegateFromCompany(activeCompany.id, oc.id, dept.name)}
-                          className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
-                        >
-                          {oc.name}
-                        </button>
-                      ))}
+                <div className="p-5">
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Responsabile Area (Delegato)</p>
+                    
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center space-x-2 cursor-pointer select-none">
+                        <input 
+                          type="checkbox" 
+                          checked={dept.isExternal}
+                          onChange={(e) => updateDeptOwner(activeCompany.id, dept.name, 'isExternal', e.target.checked)}
+                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                        />
+                        <span className="text-xs font-medium text-slate-600">Gestito da Advisor Esterno</span>
+                      </label>
+
+                      <button 
+                        type="button"
+                        onClick={() => assignOwnerToDept(activeCompany.id, dept.name)}
+                        className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                      >
+                        <UserCheck size={14} />
+                        <span>Assegna a me stesso</span>
+                      </button>
                     </div>
                   </div>
-                )}
-              </div>
-              
-              <div className="p-5">
-                <div className="flex justify-between items-center mb-4">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Responsabile Area (Delegato)</p>
-                  
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center space-x-2 cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={dept.isExternal}
-                        onChange={(e) => updateDeptOwner(activeCompany.id, dept.name, 'isExternal', e.target.checked)}
-                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                      />
-                      <span className="text-xs font-medium text-slate-600">Gestito da Advisor Esterno</span>
-                    </label>
 
-                    <button 
-                      onClick={() => assignOwnerToDept(activeCompany.id, dept.name)}
-                      className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
-                    >
-                      <UserCheck size={14} />
-                      <span>Assegna a me stesso</span>
-                    </button>
+                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${dept.isExternal ? 'opacity-90' : ''}`}>
+                     <input 
+                        type="text" 
+                        placeholder="Nome"
+                        className={`px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 ${dept.isExternal ? 'ring-2 ring-orange-100' : ''}`}
+                        value={dept.owner?.firstName}
+                        onChange={e => updateDeptOwner(activeCompany.id, dept.name, 'firstName', e.target.value)}
+                     />
+                     <input 
+                        type="text" 
+                        placeholder="Cognome"
+                        className={`px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 ${dept.isExternal ? 'ring-2 ring-orange-100' : ''}`}
+                        value={dept.owner?.lastName}
+                        onChange={e => updateDeptOwner(activeCompany.id, dept.name, 'lastName', e.target.value)}
+                     />
+                     <input 
+                        type="email" 
+                        placeholder="Email Aziendale"
+                        className={`px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 ${dept.isExternal ? 'ring-2 ring-orange-100' : ''}`}
+                        value={dept.owner?.email}
+                        onChange={e => updateDeptOwner(activeCompany.id, dept.name, 'email', e.target.value)}
+                     />
+                     <input 
+                        type="text" 
+                        placeholder={dept.isExternal ? "Ruolo (es. Consulente Esterno)" : "Ruolo (Job Title)"}
+                        className={`px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 ${dept.isExternal ? 'ring-2 ring-orange-100' : ''}`}
+                        value={dept.owner?.role}
+                        onChange={e => updateDeptOwner(activeCompany.id, dept.name, 'role', e.target.value)}
+                     />
                   </div>
                 </div>
-
-                <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${dept.isExternal ? 'opacity-90' : ''}`}>
-                   <input 
-                      type="text" 
-                      placeholder="Nome"
-                      className={`px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 ${dept.isExternal ? 'ring-2 ring-orange-100' : ''}`}
-                      value={dept.owner?.firstName}
-                      onChange={e => updateDeptOwner(activeCompany.id, dept.name, 'firstName', e.target.value)}
-                   />
-                   <input 
-                      type="text" 
-                      placeholder="Cognome"
-                      className={`px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 ${dept.isExternal ? 'ring-2 ring-orange-100' : ''}`}
-                      value={dept.owner?.lastName}
-                      onChange={e => updateDeptOwner(activeCompany.id, dept.name, 'lastName', e.target.value)}
-                   />
-                   <input 
-                      type="email" 
-                      placeholder="Email Aziendale"
-                      className={`px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 ${dept.isExternal ? 'ring-2 ring-orange-100' : ''}`}
-                      value={dept.owner?.email}
-                      onChange={e => updateDeptOwner(activeCompany.id, dept.name, 'email', e.target.value)}
-                   />
-                   <input 
-                      type="text" 
-                      placeholder={dept.isExternal ? "Ruolo (es. Consulente Esterno)" : "Ruolo (Job Title)"}
-                      className={`px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 ${dept.isExternal ? 'ring-2 ring-orange-100' : ''}`}
-                      value={dept.owner?.role}
-                      onChange={e => updateDeptOwner(activeCompany.id, dept.name, 'role', e.target.value)}
-                   />
-                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="flex justify-between pt-8">

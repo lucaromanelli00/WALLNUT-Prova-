@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../store';
-import { DOCUMENTS_DB } from '../constants';
+import { DOCUMENTS_DB, NA_WARNINGS } from '../constants';
 import { DocumentDefinition, Priority } from '../types';
 import { 
   FileText, 
@@ -10,7 +10,7 @@ import {
   Clock, 
   AlertCircle, 
   ChevronDown, 
-  Search,
+  Search, 
   Filter,
   X,
   ShieldAlert,
@@ -19,14 +19,18 @@ import {
   Square,
   ArrowRight,
   ListFilter,
-  MoreVertical
+  MoreVertical,
+  AlertTriangle,
+  Lightbulb,
+  FileCheck,
+  Users
 } from 'lucide-react';
 
-const PRIORITY_COLORS: Record<Priority, string> = {
-  MUST: 'bg-rose-50 text-rose-600 border-rose-100',
-  SHOULD: 'bg-amber-50 text-amber-600 border-amber-100',
-  COULD: 'bg-blue-50 text-blue-600 border-blue-100',
-  WOULD: 'bg-slate-50 text-slate-500 border-slate-100',
+const PRIORITY_STYLES: Record<Priority, string> = {
+  MUST: 'bg-rose-50 text-rose-700 border-rose-200 ring-rose-100',
+  SHOULD: 'bg-amber-50 text-amber-700 border-amber-200 ring-amber-100',
+  COULD: 'bg-blue-50 text-blue-700 border-blue-200 ring-blue-100',
+  WOULD: 'bg-slate-50 text-slate-600 border-slate-200 ring-slate-100',
 };
 
 const AREAS = [
@@ -48,7 +52,7 @@ const PRIORITIES: { id: Priority | 'ALL', label: string }[] = [
 ];
 
 export const Documents = () => {
-  const { user, documents, uploadDocument, assignDocument, markDocumentAsNotAvailable } = useApp();
+  const { user, documents, uploadDocument, assignDocument, markDocumentAsNotAvailable, organization, activeCompanyId } = useApp();
   const [activeArea, setActiveArea] = useState('all');
   const [activePriority, setActivePriority] = useState<Priority | 'ALL'>('ALL');
   
@@ -57,6 +61,43 @@ export const Documents = () => {
   const [modalStep, setModalStep] = useState<'FORM' | 'BATCH'>('FORM');
   const [assignForm, setAssignForm] = useState({ firstName: '', lastName: '', email: '', role: '' });
   const [selectedBatchDocs, setSelectedBatchDocs] = useState<string[]>([]);
+
+  // Warning Modal State
+  const [warningDoc, setWarningDoc] = useState<{ id: string, name: string, warning: typeof NA_WARNINGS[0] } | null>(null);
+
+  // Retrieve available team members for the dropdown
+  const availableMembers = useMemo(() => {
+    if (!organization || !activeCompanyId) return [];
+    
+    const companyDepts = organization.departments.filter(d => d.companyId === activeCompanyId);
+    const membersList: { firstName: string; lastName: string; email: string; role: string }[] = [];
+
+    companyDepts.forEach(dept => {
+      // Add Dept Owner/Delegate
+      if (dept.owner && dept.owner.email) {
+        membersList.push({
+          firstName: dept.owner.firstName,
+          lastName: dept.owner.lastName,
+          email: dept.owner.email,
+          role: dept.owner.role
+        });
+      }
+      // Add Team Members
+      if (dept.members) {
+        dept.members.forEach(m => {
+          membersList.push({
+            firstName: m.firstName,
+            lastName: m.lastName,
+            email: m.email,
+            role: m.role
+          });
+        });
+      }
+    });
+
+    // Remove duplicates based on email
+    return Array.from(new Map(membersList.map(item => [item.email, item])).values());
+  }, [organization, activeCompanyId]);
 
   // PERMISSION LOGIC & FILTERING
   const filteredDocs = useMemo(() => {
@@ -101,6 +142,23 @@ export const Documents = () => {
     }
   };
 
+  const handleMarkAsNA = (doc: DocumentDefinition) => {
+    const warning = NA_WARNINGS[doc.id];
+    if (warning) {
+      setWarningDoc({ id: doc.id, name: doc.name, warning });
+    } else {
+      markDocumentAsNotAvailable(doc.id);
+    }
+  };
+
+  const confirmNA = () => {
+    if (warningDoc) {
+      markDocumentAsNotAvailable(warningDoc.id);
+      setWarningDoc(null);
+    }
+  };
+
+  // Assign Modal Handlers
   const handleCloseModal = () => {
     setAssignModalOpen(null);
     setModalStep('FORM');
@@ -145,12 +203,24 @@ export const Documents = () => {
     );
   };
 
+  const handleSelectMember = (email: string) => {
+    const member = availableMembers.find(m => m.email === email);
+    if (member) {
+      setAssignForm({
+        firstName: member.firstName,
+        lastName: member.lastName,
+        email: member.email,
+        role: member.role
+      });
+    }
+  };
+
   return (
     <div className="pb-20 relative animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Documenti</h1>
-          <p className="text-slate-500 mt-2 font-medium">Gestisci la raccolta dati per l'analisi LDE.</p>
+          <p className="text-slate-500 mt-2 font-medium">Gestisci la raccolta dati per l'analisi strategica.</p>
         </div>
       </div>
 
@@ -175,11 +245,11 @@ export const Documents = () => {
       <div className="flex items-center space-x-2 mb-6 overflow-x-auto pb-4 no-scrollbar">
          <div className="flex items-center text-slate-400 mr-2 px-2 shrink-0">
             <ListFilter size={16} />
-            <span className="text-xs font-bold uppercase tracking-wider ml-2">Priorità</span>
+            <span className="text-xs font-bold uppercase tracking-wider ml-2">Filtra per</span>
          </div>
          {PRIORITIES.map(p => {
            const isActive = activePriority === p.id;
-           const colorClass = p.id !== 'ALL' ? PRIORITY_COLORS[p.id as Priority] : 'bg-slate-100 text-slate-600 border-slate-200';
+           const styleClass = p.id !== 'ALL' ? PRIORITY_STYLES[p.id as Priority] : 'bg-slate-100 text-slate-600 border-slate-200';
            
            return (
              <button
@@ -187,7 +257,7 @@ export const Documents = () => {
                onClick={() => setActivePriority(p.id)}
                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${
                  isActive 
-                   ? (p.id === 'ALL' ? 'bg-slate-800 text-white border-slate-800 shadow-md' : `${colorClass} ring-2 ring-offset-1 ring-slate-200 shadow-sm`)
+                   ? (p.id === 'ALL' ? 'bg-slate-800 text-white border-slate-800 shadow-md' : `${styleClass} ring-1 shadow-sm`)
                    : (p.id === 'ALL' ? 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600 opacity-60 hover:opacity-100')
                }`}
              >
@@ -227,60 +297,65 @@ export const Documents = () => {
             return (
               <div 
                 key={doc.id} 
-                className="bg-white/80 border border-slate-100 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between hover:shadow-lg hover:border-slate-200 hover:bg-white transition-all duration-300 group gap-4"
+                className={`bg-white border border-slate-100 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between hover:shadow-lg hover:shadow-slate-200/50 hover:border-slate-200 transition-all duration-300 group gap-4 relative overflow-hidden ${isNotAvailable ? 'opacity-70 bg-slate-50' : ''}`}
               >
                 {/* Left Side: ID & Info */}
-                <div className="flex items-start space-x-4 flex-1">
+                <div className="flex items-start space-x-5 flex-1 relative z-10">
                   {/* ID Box */}
-                  <div className={`h-12 w-16 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm shrink-0 transition-colors ${
+                  <div className={`h-14 w-16 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm shrink-0 transition-colors border ${
                     isNotAvailable 
-                      ? 'bg-slate-100 text-slate-400 border border-slate-200' 
-                      : 'bg-white border border-slate-200 text-slate-600 group-hover:border-blue-200 group-hover:text-blue-600'
+                      ? 'bg-slate-100 text-slate-400 border-slate-200' 
+                      : 'bg-slate-50 text-slate-600 border-slate-200 group-hover:border-blue-200 group-hover:text-blue-600 group-hover:bg-blue-50'
                   }`}>
                     {doc.code}
                   </div>
                   
                   {/* Text Details */}
                   <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1.5">
+                       <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wide border ${PRIORITY_STYLES[doc.priority]}`}>
+                          {doc.priority}
+                       </span>
+                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{doc.areaName}</span>
+                    </div>
+                    
                     <h3 className={`font-bold text-lg leading-tight mb-1 truncate ${isNotAvailable ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-900'}`}>
                       {doc.name}
                     </h3>
-                    <div className="flex flex-wrap items-center gap-2">
-                       <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{doc.areaName}</span>
-                       <span className="text-slate-300">•</span>
-                       <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wide border ${PRIORITY_COLORS[doc.priority]}`}>
-                          {doc.priority}
-                       </span>
-                       <span className="hidden sm:inline text-slate-300">•</span>
-                       <span className="hidden sm:inline text-xs text-slate-500">{doc.versionReq}</span>
-                    </div>
+                    
+                    <p className="text-xs text-slate-500 font-medium">
+                      Richiesto: <span className="text-slate-700">{doc.versionReq}</span>
+                    </p>
                   </div>
                 </div>
 
                 {/* Right Side: Status & Actions */}
-                <div className="flex items-center justify-between md:justify-end gap-4 pl-20 md:pl-0">
+                <div className="flex items-center justify-between md:justify-end gap-6 pl-20 md:pl-0 relative z-10">
                   
                   {/* Status Badge */}
                   <div>
                     {isUploaded ? (
-                      <div className="flex items-center space-x-2 text-emerald-600 font-bold text-xs bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
-                        <CheckCircle2 size={14} />
-                        <span>Caricato</span>
+                      <div className="flex items-center space-x-2 text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 shadow-sm">
+                        <CheckCircle2 size={16} className="fill-emerald-200" />
+                        <span className="text-xs font-bold">Caricato</span>
                       </div>
                     ) : isAssigned ? (
-                      <div className="flex items-center space-x-2 text-amber-600 font-bold text-xs bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100">
-                        <Clock size={14} />
-                        <span className="truncate max-w-[100px]">In corso: {state.assignedTo?.name.split(' ')[0]}</span>
+                      <div className="flex items-center space-x-2 text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100 shadow-sm">
+                        <Clock size={16} />
+                        <div className="flex flex-col leading-none">
+                          <span className="text-[10px] font-bold opacity-60 uppercase">In carico a</span>
+                          <span className="text-xs font-bold truncate max-w-[100px]">{state.assignedTo?.name.split(' ')[0]}</span>
+                        </div>
                       </div>
                     ) : isNotAvailable ? (
-                      <div className="flex items-center space-x-2 text-slate-400 font-bold text-xs bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
-                        <Ban size={14} />
-                        <span>N/A</span>
+                      <div className="flex items-center space-x-2 text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                        <Ban size={16} />
+                        <span className="text-xs font-bold">Non Disponibile</span>
                       </div>
                     ) : (
-                      <div className="flex items-center space-x-2 text-slate-400 text-xs px-3 py-1.5 font-medium">
-                        <AlertCircle size={14} />
-                        <span>Mancante</span>
+                      <div className="flex items-center space-x-2 text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                        <AlertCircle size={16} />
+                        <span className="text-xs font-bold">Mancante</span>
                       </div>
                     )}
                   </div>
@@ -289,22 +364,25 @@ export const Documents = () => {
                   <div className="flex items-center gap-2">
                      {!isUploaded && !isNotAvailable && (
                         <>
-                          <div className="relative">
+                          <div className="relative group/upload">
                             <input 
                               type="file" 
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                               onChange={(e) => handleFileUpload(doc.id, e)}
                             />
-                            <button className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 hover:scale-105 transition-all border border-blue-100 shadow-sm" title="Carica File">
+                            <button className="p-2.5 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-all shadow-lg shadow-slate-200 hover:shadow-blue-200 hover:scale-105 active:scale-95">
                               <Upload size={18} />
                             </button>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover/upload:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                              Carica File
+                            </div>
                           </div>
                           
                           {/* Assign Button */}
                           {(user?.role === 'OWNER' || (user?.role === 'DELEGATE' && user.departmentId === doc.areaId)) && (
                             <button 
                               onClick={() => setAssignModalOpen(doc.id)}
-                              className="p-2 bg-white text-slate-500 rounded-lg hover:bg-slate-100 hover:text-slate-800 transition-all border border-slate-200 shadow-sm" 
+                              className="p-2.5 bg-white text-slate-500 rounded-xl border border-slate-200 hover:border-slate-300 hover:text-slate-800 hover:bg-slate-50 transition-all shadow-sm"
                               title="Assegna a..."
                             >
                               <UserPlus size={18} />
@@ -312,16 +390,21 @@ export const Documents = () => {
                           )}
 
                           {/* N/A Button */}
-                          {doc.priority !== 'MUST' && (
-                            <button
-                              onClick={() => markDocumentAsNotAvailable(doc.id)}
-                              className="p-2 bg-white text-slate-400 rounded-lg hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all border border-slate-200 shadow-sm"
-                              title="Non Disponibile"
-                            >
-                              <Ban size={18} />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleMarkAsNA(doc)}
+                            className="p-2.5 bg-white text-slate-400 rounded-xl border border-slate-200 hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all shadow-sm"
+                            title="Segna come non disponibile"
+                          >
+                            <Ban size={18} />
+                          </button>
                         </>
+                     )}
+                     
+                     {/* If uploaded or N/A, allow reset/view (Placeholder for future features) */}
+                     {(isUploaded || isNotAvailable) && (
+                        <button className="p-2 text-slate-300 hover:text-slate-500 transition-colors">
+                          <MoreVertical size={18} />
+                        </button>
                      )}
                   </div>
 
@@ -354,6 +437,30 @@ export const Documents = () => {
                   <p className="text-xs font-bold text-blue-400 uppercase tracking-wide mb-1">Documento Selezionato</p>
                   <p className="font-bold text-slate-800 text-lg">{DOCUMENTS_DB.find(d => d.id === assignModalOpen)?.name}</p>
                 </div>
+
+                {/* Team Selection Dropdown */}
+                {availableMembers.length > 0 && (
+                  <div className="mb-6">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1 flex items-center gap-2">
+                      <Users size={14} /> Seleziona dal Team
+                    </label>
+                    <select
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 text-slate-700 font-medium transition-all"
+                      onChange={(e) => handleSelectMember(e.target.value)}
+                      defaultValue=""
+                    >
+                      <option value="" disabled>-- Scegli un collaboratore --</option>
+                      {availableMembers.map(m => (
+                        <option key={m.email} value={m.email}>{m.firstName} {m.lastName} ({m.role})</option>
+                      ))}
+                    </select>
+                    
+                    <div className="relative my-6">
+                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
+                        <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-400 font-bold">Oppure nuovo utente</span></div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-5 mb-5">
                   <div>
@@ -445,7 +552,7 @@ export const Documents = () => {
                         className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${selectedBatchDocs.includes(doc.id) ? 'bg-blue-50/50' : 'hover:bg-white'}`}
                       >
                         <div className="flex items-center space-x-4 overflow-hidden">
-                          <div className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-[10px] font-bold border ${PRIORITY_COLORS[doc.priority]}`}>
+                          <div className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-[10px] font-bold border ${PRIORITY_STYLES[doc.priority]}`}>
                             {doc.priority.charAt(0)}
                           </div>
                           <div className="truncate">
@@ -479,6 +586,70 @@ export const Documents = () => {
                 </div>
               </div>
             )}
+
+          </div>
+        </div>
+      )}
+
+      {/* Strategic Warning Modal for N/A */}
+      {warningDoc && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 border border-white/20 relative">
+            
+            {/* Header with Gradient */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-100 p-8 flex items-start gap-6 border-b border-amber-100/50">
+              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-xl shadow-amber-500/10 shrink-0 rotate-3 border border-white/50">
+                <AlertTriangle size={32} className="fill-current" />
+              </div>
+              <div className="flex-1 pt-1">
+                <h3 className="text-2xl font-extrabold text-amber-900 tracking-tight leading-none mb-2">Impatto Strategico</h3>
+                <p className="text-amber-800/80 font-medium leading-snug">
+                  Il documento <span className="font-extrabold text-amber-900">"{warningDoc.name}"</span> è critico per l'analisi Wallnut.
+                </p>
+              </div>
+              <button 
+                onClick={() => setWarningDoc(null)} 
+                className="absolute top-6 right-6 p-2 text-amber-900/40 hover:text-amber-900 hover:bg-amber-100/50 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-8">
+              
+              {/* Notification Box */}
+              <div className="bg-slate-50 border-l-4 border-amber-400 p-6 rounded-r-2xl mb-8 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <Lightbulb className="text-amber-500 shrink-0 mt-0.5" size={20} />
+                  <p className="text-slate-700 font-medium leading-relaxed text-lg">
+                    {warningDoc.warning.notification}
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions Stack */}
+              <div className="flex flex-col gap-3">
+                {/* Primary Action (Upload) */}
+                <button 
+                  onClick={() => setWarningDoc(null)}
+                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-blue-600 transition-all shadow-xl hover:shadow-blue-500/20 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-3 group"
+                >
+                  <div className="bg-white/20 p-1.5 rounded-lg group-hover:bg-white/30 transition-colors">
+                    <FileCheck size={20} />
+                  </div>
+                  <span className="text-lg">{warningDoc.warning.cta}</span>
+                </button>
+                
+                {/* Secondary Action (Confirm N/A) */}
+                <button 
+                  onClick={confirmNA}
+                  className="w-full py-3 text-slate-400 font-semibold hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all text-sm mt-2"
+                >
+                  Confermo che il documento non è disponibile
+                </button>
+              </div>
+            </div>
 
           </div>
         </div>
