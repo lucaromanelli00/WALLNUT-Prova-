@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store';
-import { TechTool } from '../types';
+import { TechTool, ToolFeedback } from '../types';
 import { AudioRecorder } from '../components/AudioRecorder';
 import { GroupInheritanceBar } from '../components/GroupInheritanceBar'; // IMPORTED
 import { transcribeAudio } from '../services/gemini';
@@ -97,21 +97,21 @@ const InputRow = ({ label, value, onChange, placeholder, minHeight = "100px", au
 };
 
 const RadioSelection = ({ options, value, onChange, vertical = false }: { options: string[], value: string, onChange: (v: string) => void, vertical?: boolean }) => (
-  <div className={`flex ${vertical ? 'flex-col space-y-3' : 'space-x-4'}`}>
+  <div className={`flex ${vertical ? 'flex-col space-y-3' : 'flex-wrap gap-4'}`}>
     {options.map(opt => {
       const isSelected = value === opt;
       return (
         <button
           key={opt}
           onClick={() => onChange(opt)}
-          className={`relative px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all flex items-center justify-center ${
+          className={`relative px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all flex items-center justify-center whitespace-nowrap ${
             isSelected 
               ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' 
               : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
           }`}
         >
           {isSelected && <Check size={16} className="absolute left-3 text-blue-600" />}
-          <span className={isSelected ? 'ml-2' : ''}>{opt}</span>
+          <span className={isSelected ? 'ml-4' : ''}>{opt}</span>
         </button>
       );
     })}
@@ -129,11 +129,9 @@ const Section4_1 = ({ data, update }: { data: any, update: any }) => {
         id: Date.now().toString(),
         domain: newTool.domain,
         name: newTool.name,
-        description: newTool.description || '',
-        team: newTool.team || ''
       };
       update({ tools: [...data.tools, tool] });
-      setNewTool({ domain: TOOL_DOMAINS[0], name: '', description: '', team: '' });
+      setNewTool({ domain: TOOL_DOMAINS[0], name: '' });
     }
   };
 
@@ -205,29 +203,9 @@ const Section4_1 = ({ data, update }: { data: any, update: any }) => {
               <input 
                 type="text" 
                 className="w-full p-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-blue-500 transition-colors"
-                placeholder="Es. Slack, Jira..."
+                placeholder="Es. Slack, Jira, Trello..."
                 value={newTool.name || ''}
                 onChange={e => setNewTool({...newTool, name: e.target.value})}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5">Team Utilizzatore</label>
-              <input 
-                type="text" 
-                className="w-full p-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-blue-500 transition-colors"
-                placeholder="Es. Marketing..."
-                value={newTool.team || ''}
-                onChange={e => setNewTool({...newTool, team: e.target.value})}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5">Scopo Principale</label>
-              <input 
-                type="text" 
-                className="w-full p-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-blue-500 transition-colors"
-                placeholder="Es. Chat aziendale"
-                value={newTool.description || ''}
-                onChange={e => setNewTool({...newTool, description: e.target.value})}
               />
             </div>
           </div>
@@ -261,11 +239,6 @@ const Section4_1 = ({ data, update }: { data: any, update: any }) => {
                     <div className="flex items-center space-x-2 mb-1">
                       <span className="font-bold text-slate-800">{tool.name}</span>
                       <span className="text-[10px] uppercase font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full tracking-wide">{tool.domain}</span>
-                    </div>
-                    <div className="text-xs text-slate-500 flex items-center space-x-2">
-                      <span className="font-semibold text-slate-600">{tool.team}</span>
-                      <span>•</span>
-                      <span>{tool.description}</span>
                     </div>
                   </div>
                 </div>
@@ -363,8 +336,17 @@ const Section4_3 = ({ data, update }: { data: any, update: any }) => (
 );
 
 const Section4_4 = ({ data, update }: { data: any, update: any }) => {
-  const handleFeedback = (key: string, value: string) => {
-    update({ toolFeedback: { ...data.toolFeedback, [key]: value } });
+  
+  const handleFeedback = (toolId: string, field: keyof ToolFeedback, value: string) => {
+    const currentFeedback = data.toolFeedback[toolId] || { frequency: '', utility: '', replaceability: '' };
+    const updatedFeedback = { ...currentFeedback, [field]: value };
+    
+    // Clear alternative if replaceability changes to not YES
+    if (field === 'replaceability' && value !== 'Sì, da uno strumento già presente') {
+      delete updatedFeedback.alternative;
+    }
+
+    update({ toolFeedback: { ...data.toolFeedback, [toolId]: updatedFeedback } });
   };
 
   return (
@@ -378,22 +360,26 @@ const Section4_4 = ({ data, update }: { data: any, update: any }) => {
           <h3 className="text-xl font-bold text-slate-900">Utilizzo & Criticità</h3>
         </div>
 
-        <InputRow 
-           label="Quali sono gli strumenti indispensabili (Business Critical) che se si fermassero bloccherebbero l'azienda?"
-           value={data.indispensableTools}
-           onChange={(val) => update({ indispensableTools: val })}
-           audioKey="b4_indispensableTools"
-         />
-         <InputRow 
-           label="Quali sono gli strumenti problematici (lenti, obsoleti o che creano frizione)?"
-           value={data.problematicTools}
-           onChange={(val) => update({ problematicTools: val })}
-           audioKey="b4_problematicTools"
-         />
-      </div>
+        {/* Global Questions */}
+        <div className="mb-10">
+           <InputRow 
+             label="Quali sono gli strumenti indispensabili (Business Critical) che se si fermassero bloccherebbero l'azienda?"
+             value={data.indispensableTools}
+             onChange={(val) => update({ indispensableTools: val })}
+             audioKey="b4_indispensableTools"
+           />
+           <InputRow 
+             label="Quali sono gli strumenti problematici (lenti, obsoleti o che creano frizione)?"
+             value={data.problematicTools}
+             onChange={(val) => update({ problematicTools: val })}
+             audioKey="b4_problematicTools"
+           />
+        </div>
 
-      <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-6">Feedback Analitico Strumenti</h4>
+        {/* Detailed Feedback Loop */}
+        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-6 pb-2 border-b border-slate-100">
+          Valutazione Puntuale Strumenti
+        </h4>
         
         {data.tools.length === 0 ? (
           <div className="p-6 bg-amber-50 border border-amber-100 rounded-xl text-amber-800 flex items-center space-x-3">
@@ -404,37 +390,98 @@ const Section4_4 = ({ data, update }: { data: any, update: any }) => {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-8">
             {data.tools.map((tool: TechTool) => {
-              const key = `${tool.domain}-${tool.id}`;
-              const currentVal = data.toolFeedback?.[key];
+              const toolId = tool.id;
+              const feedback = data.toolFeedback?.[toolId] || {};
+              const isReplaceable = feedback.replaceability === 'Sì, da uno strumento già presente';
+
               return (
-                <div key={key} className="p-5 border border-slate-100 rounded-2xl bg-slate-50/50 hover:bg-white hover:shadow-md transition-all duration-300">
-                   <div className="flex justify-between items-start mb-4">
-                     <div>
-                       <div className="font-bold text-slate-800 text-lg">{tool.name}</div>
-                       <div className="text-xs font-bold text-slate-400 uppercase tracking-wide">{tool.team}</div>
+                <div key={toolId} className="p-6 border border-slate-200 rounded-2xl bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all duration-300">
+                   <div className="flex items-center space-x-3 mb-6">
+                     <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center font-bold text-lg">
+                       {tool.name.charAt(0).toUpperCase()}
                      </div>
-                     {currentVal && <CheckCircle size={20} className="text-green-500 animate-in zoom-in" />}
+                     <div>
+                       <div className="font-bold text-slate-900 text-lg">{tool.name}</div>
+                       <div className="text-xs font-bold text-slate-400 uppercase tracking-wide">{tool.domain}</div>
+                     </div>
                    </div>
                    
-                   <div className="space-y-2">
-                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Frequenza di Utilizzo</p>
-                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                       {['Quotidiano', 'Settimanale', 'Raramente', 'Mai'].map(opt => (
-                         <button
-                           key={opt}
-                           onClick={() => handleFeedback(key, opt)}
-                           className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all ${
-                             currentVal === opt 
-                             ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' 
-                             : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                           }`}
-                         >
-                           {opt}
-                         </button>
-                       ))}
+                   <div className="space-y-6">
+                     {/* Q1: Frequency */}
+                     <div>
+                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Con quale frequenza utilizzi questo strumento?</label>
+                       <div className="flex flex-wrap gap-2">
+                         {['Quotidianamente', 'Settimanalmente', 'Occasionalmente', 'Non lo utilizzo'].map(opt => (
+                           <button
+                             key={opt}
+                             onClick={() => handleFeedback(toolId, 'frequency', opt)}
+                             className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${
+                               feedback.frequency === opt 
+                               ? 'bg-indigo-600 text-white border-indigo-600' 
+                               : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                             }`}
+                           >
+                             {opt}
+                           </button>
+                         ))}
+                       </div>
                      </div>
+
+                     {/* Q2: Utility */}
+                     <div>
+                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">2. Quanto è utile per il tuo lavoro?</label>
+                       <div className="flex flex-wrap gap-2">
+                         {['Indispensabile', 'Utile', 'Poco utile', 'Inutile'].map(opt => (
+                           <button
+                             key={opt}
+                             onClick={() => handleFeedback(toolId, 'utility', opt)}
+                             className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${
+                               feedback.utility === opt 
+                               ? 'bg-indigo-600 text-white border-indigo-600' 
+                               : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                             }`}
+                           >
+                             {opt}
+                           </button>
+                         ))}
+                       </div>
+                     </div>
+
+                     {/* Q3: Replaceability */}
+                     <div>
+                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">3. Potrebbe essere sostituito da un altro già in uso?</label>
+                       <div className="flex flex-wrap gap-2">
+                         {['No, è unico', 'Sì, da uno strumento già presente', 'Non lo so'].map(opt => (
+                           <button
+                             key={opt}
+                             onClick={() => handleFeedback(toolId, 'replaceability', opt)}
+                             className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${
+                               feedback.replaceability === opt 
+                               ? 'bg-indigo-600 text-white border-indigo-600' 
+                               : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                             }`}
+                           >
+                             {opt}
+                           </button>
+                         ))}
+                       </div>
+                     </div>
+
+                     {/* Q4: Alternative (Conditional) */}
+                     {isReplaceable && (
+                       <div className="animate-in fade-in slide-in-from-top-2">
+                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">4. Quale strumento potrebbe sostituirlo?</label>
+                         <input 
+                           type="text" 
+                           className="w-full p-3 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 bg-white"
+                           placeholder="Nome dello strumento alternativo..."
+                           value={feedback.alternative || ''}
+                           onChange={(e) => handleFeedback(toolId, 'alternative', e.target.value)}
+                         />
+                       </div>
+                     )}
                    </div>
                 </div>
               );
@@ -480,8 +527,11 @@ export const BlockTechnology = () => {
     const s3Complete = !!techData.riskScenarios;
     if (s3Complete) completedSections++;
     
-    // 4.4: Indispensable tools filled
-    const s4Complete = !!techData.indispensableTools;
+    // 4.4: Indispensable tools filled AND at least one tool feedback if tools exist
+    const hasFeedback = techData.tools.length > 0 
+      ? Object.keys(techData.toolFeedback).length > 0
+      : true; // If no tools, feedback isn't strictly required
+    const s4Complete = !!techData.indispensableTools && hasFeedback;
     if (s4Complete) completedSections++;
 
     return {

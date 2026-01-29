@@ -212,7 +212,7 @@ interface AppContextType extends AppState {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 // KEY CHANGED TO FORCE CLEAN SLATE
-const STORAGE_KEY = 'wallnut_prod_v1_clean';
+const STORAGE_KEY = 'wallnut_prod_v2_clean';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(INITIAL_STATE);

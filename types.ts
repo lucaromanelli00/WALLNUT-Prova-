@@ -261,8 +261,15 @@ export interface TechTool {
   id: string;
   domain: string; // Project Mgmt, CRM, etc.
   name: string;
-  description: string;
-  team: string;
+  description?: string; // Made optional
+  team?: string; // Made optional
+}
+
+export interface ToolFeedback {
+  frequency: string;      // Quotidianamente; Settimanalmente; Occasionalmente; Non lo utilizzo.
+  utility: string;        // Indispensable; Utile; Poco utile; Inutile.
+  replaceability: string; // No, è unico; Sì, da uno strumento già presente; Non lo so.
+  alternative?: string;   // Campo libero (optional)
 }
 
 export interface TechBlockData {
@@ -296,7 +303,7 @@ export interface TechBlockData {
   indispensableTools: string;
   indispensableActivities: string;
   problematicTools: string;
-  toolFeedback: Record<string, string>; // key: toolId, value: frequency
+  toolFeedback: Record<string, ToolFeedback>; // Changed from simple string to structured object
 }
 
 // Snapshot of data for a specific company
