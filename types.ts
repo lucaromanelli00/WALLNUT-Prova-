@@ -202,6 +202,16 @@ export interface IdentityBlockData {
 }
 
 // --- BLOCK 3 SPECIFIC TYPES (MARKET) ---
+
+export interface MarketEntity {
+  id: string;
+  name: string;
+  website?: string;
+  // Specific fields
+  attractiveness?: string; // Only for Customers: "Cosa vi rende attraenti per questo cliente?"
+  differentiation?: string; // Only for Competitors: "In cosa vi differenziate..."
+}
+
 export interface MarketBlockData {
   // 3.1 Market Trends
   topTrends: string;
@@ -213,21 +223,28 @@ export interface MarketBlockData {
   unservedNeeds: string;
 
   // 3.2 Competitors
-  directCompetitors: string;
+  competitors: MarketEntity[]; // Updated
   differentiation: string;
   monitoringStrategy: string;
   observedModels: string;
 
   // 3.3 Customers
-  mainCustomers: string;
+  customers: MarketEntity[]; // Updated
+  // Removed direct "mainCustomers" string as it is now a list
   idealCustomerPattern: string;
   targetEvolution: string;
-  attractiveness: string;
+  // Removed global "attractiveness" string as it is now per customer
   strategicCriteria: string;
   growthSegments: string;
   customerRelationship: string;
 
-  // 3.4 Regulations
+  // 3.4 Suppliers (New)
+  suppliers: MarketEntity[];
+  suppliersEvolution: string; // "Come è cambiato nel tempo il vostro target?"
+  strategicSuppliers: string;
+  supplierRelationships: string;
+
+  // 3.5 Regulations (Shifted)
   impactingRegulations: string;
   complianceUpdate: string;
   developmentConditioning: string;
@@ -235,7 +252,7 @@ export interface MarketBlockData {
   recentChanges: string;
   riskAreas: string;
 
-  // 3.5 Perception & Reviews
+  // 3.6 Perception & Reviews (Shifted)
   feedbackChannels: string;
   feedbackCollection: string;
   feedbackAnalysis: string;
@@ -243,7 +260,7 @@ export interface MarketBlockData {
   recurringPerceptions: string;
   reputationManagement: string;
 
-  // 3.6 Offers & Partnerships
+  // 3.7 Offers & Partnerships (Shifted)
   proposalStakeholders: string;
   offerTypes: string;
   newOfferOrigin: string;
@@ -263,6 +280,8 @@ export interface TechTool {
   name: string;
   description?: string; // Made optional
   team?: string; // Made optional
+  integration?: string; // "Sì" | "No" | "Non so"
+  integratedWith?: string; // "Quali?"
 }
 
 export interface ToolFeedback {

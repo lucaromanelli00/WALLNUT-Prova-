@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../store';
 import { DOCUMENTS_DB, NA_WARNINGS } from '../constants';
@@ -219,7 +220,7 @@ export const Documents = () => {
     <div className="pb-20 relative animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Documenti</h1>
+          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Documenti & Fonti dati</h1>
           <p className="text-slate-500 mt-2 font-medium">Gestisci la raccolta dati per l'analisi strategica.</p>
         </div>
       </div>

@@ -21,7 +21,8 @@ import {
   Check,
   Laptop,
   Sparkles,
-  Loader2
+  Loader2,
+  Link as LinkIcon
 } from 'lucide-react';
 
 // --- CONSTANTS ---
@@ -121,17 +122,19 @@ const RadioSelection = ({ options, value, onChange, vertical = false }: { option
 // --- SECTIONS COMPONENTS ---
 
 const Section4_1 = ({ data, update }: { data: any, update: any }) => {
-  const [newTool, setNewTool] = useState<Partial<TechTool>>({ domain: TOOL_DOMAINS[0] });
+  const [newTool, setNewTool] = useState<Partial<TechTool>>({ domain: TOOL_DOMAINS[0], integration: '', integratedWith: '' });
 
   const handleAddTool = () => {
-    if (newTool.name && newTool.domain) {
+    if (newTool.name && newTool.domain && newTool.integration) {
       const tool: TechTool = {
         id: Date.now().toString(),
         domain: newTool.domain,
         name: newTool.name,
+        integration: newTool.integration,
+        integratedWith: newTool.integration === 'Sì' ? newTool.integratedWith : undefined
       };
       update({ tools: [...data.tools, tool] });
-      setNewTool({ domain: TOOL_DOMAINS[0], name: '' });
+      setNewTool({ domain: TOOL_DOMAINS[0], name: '', integration: '', integratedWith: '' });
     }
   };
 
@@ -187,6 +190,7 @@ const Section4_1 = ({ data, update }: { data: any, update: any }) => {
         {/* Add Tool Form */}
         <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-8 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
           <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Aggiungi Strumento</h4>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1.5">Dominio</label>
@@ -209,9 +213,43 @@ const Section4_1 = ({ data, update }: { data: any, update: any }) => {
               />
             </div>
           </div>
+
+          <div className="mb-6">
+            <label className="block text-xs font-bold text-slate-500 mb-2">È integrato con altri software?</label>
+            <div className="flex gap-3">
+              {['Sì', 'No', 'Non so'].map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setNewTool({ ...newTool, integration: opt })}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
+                    newTool.integration === opt 
+                    ? 'bg-blue-600 text-white border-blue-600' 
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+            
+            {/* Conditional input if Integration is YES */}
+            {newTool.integration === 'Sì' && (
+              <div className="mt-4 animate-in fade-in slide-in-from-top-2">
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">Con quali software?</label>
+                <input 
+                  type="text" 
+                  className="w-full p-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-blue-500 transition-colors"
+                  placeholder="Es. Salesforce, SAP, Outlook..."
+                  value={newTool.integratedWith || ''}
+                  onChange={e => setNewTool({...newTool, integratedWith: e.target.value})}
+                />
+              </div>
+            )}
+          </div>
+
           <button 
             onClick={handleAddTool}
-            disabled={!newTool.name}
+            disabled={!newTool.name || !newTool.integration}
             className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-all"
           >
             <Plus size={18} />
@@ -240,6 +278,14 @@ const Section4_1 = ({ data, update }: { data: any, update: any }) => {
                       <span className="font-bold text-slate-800">{tool.name}</span>
                       <span className="text-[10px] uppercase font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full tracking-wide">{tool.domain}</span>
                     </div>
+                    {tool.integration === 'Sì' && (
+                      <div className="flex flex-col space-y-0.5">
+                        <div className="flex items-center text-xs text-emerald-600 font-bold mt-1">
+                          <LinkIcon size={12} className="mr-1" />
+                          <span>Integrato {tool.integratedWith ? `con ${tool.integratedWith}` : ''}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <button onClick={() => removeTool(tool.id)} className="text-slate-300 hover:text-red-500 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100">

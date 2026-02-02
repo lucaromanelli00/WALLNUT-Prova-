@@ -121,7 +121,7 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
           {/* Main Navigation */}
           <div className="space-y-1">
             <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" active={isActive('/')} />
-            <SidebarItem to="/documents" icon={FileText} label="Documenti" active={isActive('/documents')} />
+            <SidebarItem to="/documents" icon={FileText} label="Documenti & Fonti" active={isActive('/documents')} />
             <SidebarItem to="/assessment" icon={BarChart3} label="Assessment" active={isActive('/assessment')} />
             <SidebarItem to="/team" icon={Users} label="Team" active={isActive('/team')} />
             <SidebarItem to="/info" icon={Info} label="Info" active={isActive('/info')} />
