@@ -105,24 +105,19 @@ export interface Notification {
 // --- BLOCK 1 SPECIFIC TYPES (PROFILE) ---
 export interface ProfileBlockData {
   // 1.1 Roles & Teams
-  organigramAdherence: string;
+  organigramAdherence: string; // "Sì, in modo coerente", "Parzialmente", "No, in modo significativo"
+  organigramDivergence: string; // Follow-up text if not "Sì"
   keyFigures: string;
-  informalRoles: string;
   collaboratingTeams: string;
-  externalPartners: string;
+  externalPartners: string; // JSON String storing Array<{ category: string, role: string }>
   distinctiveSkills: string;
   missingSkills: string;
 
   // 1.2 Company Culture
-  individualRelationship: string;
-  idealEnvironment: string;
-  autonomyVsResults: string;
-  rewardedBehaviors: string;
-  toleratedBehaviors: string;
-  internalCommunication: string;
-  meetingManagement: string;
-  workLifeBalance: string;
-  diversityValue: string;
+  individualRelationship: string; // Likert 1-5 stringified
+  evaluationCriteria: string; // JSON String { presence: number, autonomy: number, results: number }
+  rewardedBehaviors: string[]; // Array of strings (checkboxes)
+  toleratedBehaviors: string[]; // Array of strings (checkboxes)
   changeReaction: string;
   digitalAttitude: string;
 

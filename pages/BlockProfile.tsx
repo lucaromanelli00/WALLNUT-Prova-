@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store';
 import { ProfileBlockData, LibraryItem } from '../types';
@@ -18,49 +18,22 @@ import {
   Lock,
   Link as LinkIcon,
   Sparkles,
-  Loader2
+  Loader2,
+  Check
 } from 'lucide-react';
 
-// NOTE: "hint" contains the actual question now, which we will display as the main label.
-const QUESTIONS_1_1: { key: keyof ProfileBlockData, hint: string }[] = [
-  { key: 'organigramAdherence', hint: "L’organigramma formale riflette il funzionamento reale dell’azienda? Se no, in quali punti diverge?" },
-  { key: 'keyFigures', hint: "Chi sono le 3–5 figure chiave per il funzionamento dell’azienda oggi? (ruolo, ambito, responsabilità effettiva)" },
-  { key: 'informalRoles', hint: "Esistono ruoli informali che influenzano decisioni o processi chiave?" },
-  { key: 'collaboratingTeams', hint: "Quali team o funzioni collaborano maggiormente nella pratica?" },
-  { key: 'externalPartners', hint: "Quali figure esterne collaborano stabilmente con l’azienda? (consulenti, partner, ecc.) Che ruolo hanno?" },
-  { key: 'distinctiveSkills', hint: "Quali competenze interne considerate oggi distintive o strategiche?" },
-  { key: 'missingSkills', hint: "Quali competenze chiave risultano invece mancanti o sottodimensionate?" },
-];
+// --- SHARED COMPONENTS ---
 
-const QUESTIONS_1_2: { key: keyof ProfileBlockData, hint: string }[] = [
-  { key: 'individualRelationship', hint: "Qual è il rapporto tra l’azienda e il singolo individuo?" },
-  { key: 'idealEnvironment', hint: "Come descriveresti l’ambiente di lavoro ideale in azienda?" },
-  { key: 'autonomyVsResults', hint: "Quanto contano, nella pratica, presenza, autonomia e risultati?" },
-  { key: 'rewardedBehaviors', hint: "Quali comportamenti vengono premiati, anche implicitamente?" },
-  { key: 'toleratedBehaviors', hint: "Quali comportamenti vengono tollerati pur non essendo coerenti con i valori dichiarati?" },
-  { key: 'internalCommunication', hint: "Come viene gestita la comunicazione interna?" },
-  { key: 'meetingManagement', hint: "Come vengono gestite riunioni e momenti di confronto?" },
-  { key: 'workLifeBalance', hint: "Come viene considerato il work–life balance?" },
-  { key: 'diversityValue', hint: "Quanto valore viene dato alla diversità di background, esperienze e prospettive?" },
-  { key: 'changeReaction', hint: "Come reagisce l’organizzazione al cambiamento?" },
-  { key: 'digitalAttitude', hint: "Il digitale è vissuto come opportunità, imposizione o rischio?" },
-];
-
-// Shared Component for Text Input
-const TextAreaInput = ({ label, value, onChange, audioKey }: { label: string, value: string, onChange: (v: string) => void, audioKey: string }) => {
+const TextAreaInput = ({ label, value, onChange, audioKey, placeholder }: { label: string, value: string, onChange: (v: string) => void, audioKey: string, placeholder?: string }) => {
   const { saveAudioAnswer, audioAnswers } = useApp();
   const [isTranscribing, setIsTranscribing] = useState(false);
 
   const handleAudioSave = async (base64: string) => {
-    // 1. Save Audio locally
     saveAudioAnswer(audioKey, base64);
-    
-    // 2. Trigger Transcription
     if (base64) {
       setIsTranscribing(true);
       const text = await transcribeAudio(base64);
       if (text) {
-        // Append text if there's already content, or just set it
         const newText = value ? `${value}\n\n[Trascrizione Audio]: ${text}` : text;
         onChange(newText);
       }
@@ -71,9 +44,7 @@ const TextAreaInput = ({ label, value, onChange, audioKey }: { label: string, va
   return (
     <div className="mb-8 last:mb-0">
       <div className="flex justify-between items-start mb-3">
-        <label className="block text-sm font-semibold text-slate-800 leading-relaxed max-w-[85%]">
-          {label}
-        </label>
+        <label className="block text-sm font-semibold text-slate-800 leading-relaxed max-w-[85%]">{label}</label>
         {isTranscribing && (
           <div className="flex items-center space-x-2 text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full animate-pulse">
             <Loader2 size={12} className="animate-spin" />
@@ -85,8 +56,8 @@ const TextAreaInput = ({ label, value, onChange, audioKey }: { label: string, va
       <div className="relative">
         <textarea
           className={`w-full min-h-[100px] p-4 border rounded-xl focus:outline-none focus:border-blue-500 transition-colors mb-3 text-sm text-slate-700 ${isTranscribing ? 'bg-indigo-50/30 border-indigo-200' : 'bg-slate-50 focus:bg-white border-slate-200'}`}
-          placeholder={isTranscribing ? "L'IA sta scrivendo per te..." : "Scrivi qui o registra una risposta vocale..."}
-          value={value}
+          placeholder={isTranscribing ? "L'IA sta scrivendo per te..." : (placeholder || "Scrivi qui o registra una risposta vocale...")}
+          value={value || ''}
           onChange={(e) => onChange(e.target.value)}
           disabled={isTranscribing}
         />
@@ -106,6 +77,246 @@ const TextAreaInput = ({ label, value, onChange, audioKey }: { label: string, va
   );
 };
 
+const RadioGroup = ({ label, options, value, onChange }: { label: string, options: string[], value: string, onChange: (v: string) => void }) => (
+  <div className="mb-8">
+    <label className="block text-sm font-semibold text-slate-800 mb-3">{label}</label>
+    <div className="flex flex-wrap gap-3">
+      {options.map(opt => (
+        <button
+          key={opt}
+          onClick={() => onChange(opt)}
+          className={`px-4 py-2 rounded-xl border text-sm font-bold transition-all ${
+            value === opt 
+            ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
+            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+const CheckboxGroup = ({ label, options, values, onChange }: { label: string, options: string[], values: string[], onChange: (v: string[]) => void }) => {
+  const toggle = (opt: string) => {
+    if (values.includes(opt)) onChange(values.filter(v => v !== opt));
+    else onChange([...values, opt]);
+  };
+
+  return (
+    <div className="mb-8">
+      <label className="block text-sm font-semibold text-slate-800 mb-3">{label}</label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {options.map(opt => {
+          const isSelected = values.includes(opt);
+          return (
+            <button
+              key={opt}
+              onClick={() => toggle(opt)}
+              className={`flex items-center space-x-3 px-4 py-3 rounded-xl border text-left transition-all ${
+                isSelected 
+                ? 'bg-blue-50 border-blue-200 text-blue-800' 
+                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
+                {isSelected && <Check size={14} className="text-white" />}
+              </div>
+              <span className="text-sm font-medium">{opt}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const LikertScale = ({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) => {
+  const levels = [
+    { val: '1', label: 'Controllo' },
+    { val: '2', label: 'Equilibrio' },
+    { val: '3', label: 'Responsabilizzazione' },
+    { val: '4', label: 'Autonomia' },
+    { val: '5', label: 'Fiducia totale' }
+  ];
+
+  return (
+    <div className="mb-10">
+      <label className="block text-sm font-semibold text-slate-800 mb-6">{label}</label>
+      <div className="relative flex justify-between items-center px-4">
+        {/* Connection Line */}
+        <div className="absolute left-4 right-4 h-1 bg-slate-100 top-5 -z-10"></div>
+        
+        {levels.map((lvl) => {
+          const isSelected = value === lvl.val;
+          return (
+            <div key={lvl.val} className="flex flex-col items-center cursor-pointer group" onClick={() => onChange(lvl.val)}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all shadow-sm ${
+                isSelected 
+                ? 'bg-blue-600 text-white scale-110 ring-4 ring-blue-100' 
+                : 'bg-white text-slate-400 border-2 border-slate-200 group-hover:border-blue-400 group-hover:text-blue-500'
+              }`}>
+                {lvl.val}
+              </div>
+              <span className={`mt-3 text-xs font-medium text-center max-w-[80px] transition-colors ${isSelected ? 'text-blue-700' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                {lvl.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const DistributionSlider = ({ data, onChange }: { data: string, onChange: (v: string) => void }) => {
+  const [values, setValues] = useState({ presence: 33, autonomy: 33, results: 34 });
+
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed.presence !== undefined) setValues(parsed);
+    } catch {
+      // Keep default
+    }
+  }, [data]);
+
+  const handleChange = (key: keyof typeof values, val: number) => {
+    const newValues = { ...values, [key]: val };
+    setValues(newValues);
+    onChange(JSON.stringify(newValues));
+  };
+
+  const total = values.presence + values.autonomy + values.results;
+  const isBalanced = total === 100;
+
+  return (
+    <div className="mb-10 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+      <div className="flex justify-between items-center mb-6">
+        <label className="text-sm font-bold text-slate-800 uppercase tracking-wider">Quanto contano nella pratica?</label>
+        <div className={`text-xs font-bold px-3 py-1 rounded-full ${isBalanced ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+          Totale: {total}%
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {[{ k: 'presence', l: 'Presenza Fisica' }, { k: 'autonomy', l: 'Autonomia' }, { k: 'results', l: 'Risultati' }].map(item => (
+          <div key={item.k}>
+            <div className="flex justify-between text-xs font-semibold text-slate-600 mb-2">
+              <span>{item.l}</span>
+              <span>{values[item.k as keyof typeof values]}%</span>
+            </div>
+            <input 
+              type="range" min="0" max="100" 
+              value={values[item.k as keyof typeof values]}
+              onChange={e => handleChange(item.k as keyof typeof values, parseInt(e.target.value))}
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            />
+          </div>
+        ))}
+      </div>
+      {!isBalanced && <p className="text-xs text-red-500 font-bold mt-4 text-center">La somma deve essere 100% per salvare correttamente.</p>}
+    </div>
+  );
+};
+
+const ExternalPartnersSection = ({ data, update }: { data: ProfileBlockData, update: any }) => {
+  const [partners, setPartners] = useState<{ category: string, role: string }[]>([]);
+
+  useEffect(() => {
+    try {
+      if (data.externalPartners) {
+        setPartners(JSON.parse(data.externalPartners));
+      }
+    } catch { setPartners([]) }
+  }, [data.externalPartners]);
+
+  const categories = [
+    "Consulenti strategici",
+    "Agenzie marketing/comunicazione",
+    "Partner tecnologici / IT",
+    "Studi legali / fiscali",
+    "Sviluppatori esterni",
+    "Nessuna"
+  ];
+
+  const handleToggle = (cat: string) => {
+    if (cat === "Nessuna") {
+      setPartners([{ category: "Nessuna", role: "-" }]);
+      update({ externalPartners: JSON.stringify([{ category: "Nessuna", role: "-" }]) });
+      return;
+    }
+
+    let newPartners = [...partners.filter(p => p.category !== "Nessuna")];
+    const exists = newPartners.find(p => p.category === cat);
+
+    if (exists) {
+      newPartners = newPartners.filter(p => p.category !== cat);
+    } else {
+      newPartners.push({ category: cat, role: 'Operativo' }); // Default role
+    }
+    
+    setPartners(newPartners);
+    update({ externalPartners: JSON.stringify(newPartners) });
+  };
+
+  const handleRoleChange = (cat: string, role: string) => {
+    const newPartners = partners.map(p => p.category === cat ? { ...p, role } : p);
+    setPartners(newPartners);
+    update({ externalPartners: JSON.stringify(newPartners) });
+  };
+
+  return (
+    <div className="mb-8">
+      <label className="block text-sm font-semibold text-slate-800 mb-3">Quali figure esterne collaborano stabilmente con l’azienda?</label>
+      <div className="space-y-3">
+        {categories.map(cat => {
+          const isSelected = partners.some(p => p.category === cat);
+          const currentRole = partners.find(p => p.category === cat)?.role || 'Operativo';
+
+          return (
+            <div key={cat} className={`border rounded-xl transition-all ${isSelected ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-slate-200'}`}>
+              <div 
+                className="flex items-center space-x-3 p-4 cursor-pointer"
+                onClick={() => handleToggle(cat)}
+              >
+                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
+                  {isSelected && <Check size={14} className="text-white" />}
+                </div>
+                <span className="text-sm font-medium text-slate-700">{cat}</span>
+              </div>
+
+              {isSelected && cat !== "Nessuna" && (
+                <div className="px-4 pb-4 pl-12 animate-in slide-in-from-top-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-2">Ruolo Prevalente</p>
+                  <div className="flex flex-wrap gap-2">
+                    {['Operativo', 'Consulenziale', 'Decisionale', 'Misto'].map(role => (
+                      <button
+                        key={role}
+                        onClick={() => handleRoleChange(cat, role)}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
+                          currentRole === role 
+                          ? 'bg-blue-600 text-white border-blue-600' 
+                          : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        {role}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// --- SECTION IMPLEMENTATIONS ---
+
 const Section1_1 = ({ data, update }: { data: ProfileBlockData, update: any }) => {
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -117,18 +328,59 @@ const Section1_1 = ({ data, update }: { data: ProfileBlockData, update: any }) =
           <h3 className="text-xl font-bold text-slate-900">Ruoli & Team</h3>
         </div>
         
-        <div className="divide-y divide-slate-100">
-          {QUESTIONS_1_1.map((q) => (
-            <div key={q.key} className="py-6 first:pt-0 last:pb-0 border-0">
-              <TextAreaInput 
-                label={q.hint} // Using the full question
-                value={data[q.key] as string || ''}
-                onChange={(val) => update({ [q.key]: val })}
-                audioKey={`b1_${q.key}`}
-              />
-            </div>
-          ))}
-        </div>
+        {/* Q1: Organigram */}
+        <RadioGroup 
+          label="L’organigramma formale riflette il funzionamento reale dell’azienda?"
+          options={["Sì, in modo coerente", "Parzialmente", "No, in modo significativo"]}
+          value={data.organigramAdherence}
+          onChange={(val) => update({ organigramAdherence: val })}
+        />
+        
+        {data.organigramAdherence && data.organigramAdherence !== "Sì, in modo coerente" && (
+          <div className="pl-4 border-l-2 border-orange-200 mb-8 animate-in slide-in-from-left-4">
+            <TextAreaInput 
+              label="In quali ambiti si discosta maggiormente?"
+              value={data.organigramDivergence}
+              onChange={(val) => update({ organigramDivergence: val })}
+              audioKey="b1_organigramDivergence"
+            />
+          </div>
+        )}
+
+        {/* Q2: Key Figures */}
+        <TextAreaInput 
+          label="Chi sono le 3–5 figure chiave per il funzionamento dell’azienda oggi? (ruolo, ambito, responsabilità effettiva)"
+          value={data.keyFigures}
+          onChange={(val) => update({ keyFigures: val })}
+          audioKey="b1_keyFigures"
+        />
+
+        {/* Q3: Collaborating Teams */}
+        <TextAreaInput 
+          label="Quali funzioni collaborano maggiormente nella pratica?"
+          value={data.collaboratingTeams}
+          onChange={(val) => update({ collaboratingTeams: val })}
+          audioKey="b1_collaboratingTeams"
+        />
+
+        {/* Q4: External Partners */}
+        <ExternalPartnersSection data={data} update={update} />
+
+        {/* Q5: Distinctive Skills */}
+        <TextAreaInput 
+          label="Quali competenze interne considerate oggi distintive o strategiche?"
+          value={data.distinctiveSkills}
+          onChange={(val) => update({ distinctiveSkills: val })}
+          audioKey="b1_distinctiveSkills"
+        />
+
+        {/* Q6: Missing Skills */}
+        <TextAreaInput 
+          label="Quali competenze risultano oggi mancanti o sottodimensionate?"
+          value={data.missingSkills}
+          onChange={(val) => update({ missingSkills: val })}
+          audioKey="b1_missingSkills"
+        />
       </div>
     </div>
   );
@@ -145,18 +397,50 @@ const Section1_2 = ({ data, update }: { data: ProfileBlockData, update: any }) =
           <h3 className="text-xl font-bold text-slate-900">Cultura Aziendale</h3>
         </div>
 
-        <div className="divide-y divide-slate-100">
-          {QUESTIONS_1_2.map((q) => (
-            <div key={q.key} className="py-6 first:pt-0 last:pb-0 border-0">
-              <TextAreaInput 
-                label={q.hint} // Using the full question
-                value={data[q.key] as string || ''}
-                onChange={(val) => update({ [q.key]: val })}
-                audioKey={`b1_${q.key}`}
-              />
-            </div>
-          ))}
-        </div>
+        {/* Q1: Likert Scale */}
+        <LikertScale 
+          label="Come viene vissuto il rapporto tra azienda e individuo?"
+          value={data.individualRelationship}
+          onChange={(val) => update({ individualRelationship: val })}
+        />
+
+        {/* Q2: Distribution Slider */}
+        <DistributionSlider 
+          data={data.evaluationCriteria} 
+          onChange={(val) => update({ evaluationCriteria: val })}
+        />
+
+        {/* Q3: Rewarded Behaviors */}
+        <CheckboxGroup 
+          label="Quali comportamenti vengono premiati, anche implicitamente?"
+          options={["Proattività", "Velocità", "Affidabilità", "Allineamento gerarchico", "Innovazione", "Capacità relazionali"]}
+          values={data.rewardedBehaviors}
+          onChange={(val) => update({ rewardedBehaviors: val })}
+        />
+
+        {/* Q4: Tolerated Behaviors */}
+        <CheckboxGroup 
+          label="Quali comportamenti vengono tollerati pur non essendo coerenti con i valori dichiarati?"
+          options={["Ritardi", "Scarsa comunicazione", "Centralizzazione eccessiva", "Resistenza al cambiamento", "Overworking"]}
+          values={data.toleratedBehaviors}
+          onChange={(val) => update({ toleratedBehaviors: val })}
+        />
+
+        {/* Q5: Change Reaction */}
+        <RadioGroup 
+          label="Come reagisce l’organizzazione al cambiamento?"
+          options={["Proattiva", "Pragmatica", "Reattiva", "Difensiva"]}
+          value={data.changeReaction}
+          onChange={(val) => update({ changeReaction: val })}
+        />
+
+        {/* Q6: Digital Attitude */}
+        <RadioGroup 
+          label="Il digitale è vissuto come:"
+          options={["Opportunità", "Necessità", "Imposizione"]}
+          value={data.digitalAttitude}
+          onChange={(val) => update({ digitalAttitude: val })}
+        />
       </div>
     </div>
   );
@@ -311,22 +595,32 @@ export const BlockProfile = () => {
 
   // Progress Calculation
   const calculateProgress = () => {
-    let filledFields = 0;
-    
-    QUESTIONS_1_1.forEach(q => { if(profileData[q.key]) filledFields++; });
-    QUESTIONS_1_2.forEach(q => { if(profileData[q.key]) filledFields++; });
+    let completed = 0;
+    const totalSections = 3;
 
-    if (profileData.library.length > 0) filledFields += 2;
+    // 1.1 Completion
+    const s1Keys: (keyof ProfileBlockData)[] = ['organigramAdherence', 'keyFigures', 'collaboratingTeams', 'distinctiveSkills', 'missingSkills'];
+    const s1Basic = s1Keys.every(k => (profileData[k] as string)?.length > 0);
+    const s1Partners = profileData.externalPartners && profileData.externalPartners.length > 5; // Basic check for non-empty JSON array
+    if (s1Basic && s1Partners) completed++;
 
-    const totalFields = QUESTIONS_1_1.length + QUESTIONS_1_2.length + 2;
-    const percentage = Math.min(100, Math.round((filledFields / totalFields) * 100));
-    
-    // Exact completion check
-    const s1Complete = QUESTIONS_1_1.every(q => profileData[q.key] && (profileData[q.key] as string).length > 0);
-    const s2Complete = QUESTIONS_1_2.every(q => profileData[q.key] && (profileData[q.key] as string).length > 0);
-    const s3Complete = profileData.library.length > 0;
+    // 1.2 Completion
+    const s2Keys: (keyof ProfileBlockData)[] = ['individualRelationship', 'changeReaction', 'digitalAttitude'];
+    const s2Basic = s2Keys.every(k => (profileData[k] as string)?.length > 0);
+    const s2Behaviors = profileData.rewardedBehaviors.length > 0;
+    if (s2Basic && s2Behaviors) completed++;
 
-    return { percentage, s1Complete, s2Complete, s3Complete };
+    // 1.3 Completion
+    if (profileData.library.length > 0) completed++;
+
+    const percentage = Math.round((completed / totalSections) * 100);
+
+    return { 
+      percentage, 
+      s1Complete: !!(s1Basic && s1Partners), 
+      s2Complete: !!(s2Basic && s2Behaviors), 
+      s3Complete: profileData.library.length > 0 
+    };
   };
 
   const progress = calculateProgress();
@@ -336,7 +630,7 @@ export const BlockProfile = () => {
   };
 
   const handleCompleteBlock = () => {
-    if (progress.percentage < 90) {
+    if (progress.percentage < 100) {
       if(!confirm("Non hai compilato tutti i campi. Vuoi comunque completare il blocco?")) return;
     }
     updateBlockProgress(1, 100, 'COMPLETED');

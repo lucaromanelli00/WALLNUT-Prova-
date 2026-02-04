@@ -34,21 +34,16 @@ const INITIAL_TECH_DATA: TechBlockData = {
 
 const INITIAL_PROFILE_DATA: ProfileBlockData = {
   organigramAdherence: '',
+  organigramDivergence: '',
   keyFigures: '',
-  informalRoles: '',
   collaboratingTeams: '',
   externalPartners: '',
   distinctiveSkills: '',
   missingSkills: '',
   individualRelationship: '',
-  idealEnvironment: '',
-  autonomyVsResults: '',
-  rewardedBehaviors: '',
-  toleratedBehaviors: '',
-  internalCommunication: '',
-  meetingManagement: '',
-  workLifeBalance: '',
-  diversityValue: '',
+  evaluationCriteria: '{"presence": 33, "autonomy": 33, "results": 34}', // Default balanced
+  rewardedBehaviors: [],
+  toleratedBehaviors: [],
   changeReaction: '',
   digitalAttitude: '',
   library: []
