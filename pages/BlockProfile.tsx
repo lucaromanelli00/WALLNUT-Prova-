@@ -391,7 +391,7 @@ export const BlockProfile = () => {
         {/* Sidebar */}
         <div className="lg:col-span-1 space-y-2">
           <div className="mb-4 px-2">
-            <h1 className="text-xl font-extrabold text-slate-900 leading-tight">Profilo & Struttura</h1>
+            <h1 className="text-xl font-extrabold text-slate-900 leading-tight">Profilo aziendale e struttura organizzativa</h1>
             <p className="text-xs text-slate-500">Blocco 1 - Analisi LDE</p>
           </div>
           <NavButton id="1.1" label="Ruoli & Team" icon={Users} completed={progress.s1Complete} />

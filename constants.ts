@@ -9,8 +9,8 @@ export const ROLES = {
 };
 
 export const BLOCK_TITLES = {
-  1: 'Profilo & Struttura',
-  2: 'Dimensioni & Identità',
+  1: 'Profilo aziendale e struttura organizzativa',
+  2: 'Dimensioni, ciclo di vita e identità',
   3: 'Ambiente Esterno',
   4: 'Tecnologia',
   5: 'Execution (Processi)',

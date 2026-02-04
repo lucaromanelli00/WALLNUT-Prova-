@@ -50,12 +50,12 @@ const BlockNavItem = ({ id, label, status, active, accessible }: { id: number, l
     return (
       <div className="flex items-center justify-between px-4 py-3 rounded-2xl opacity-40 cursor-not-allowed select-none">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold border border-slate-200 bg-slate-50 text-slate-400">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold border border-slate-200 bg-slate-50 text-slate-400 shrink-0">
             {id}
           </div>
-          <span className="text-sm font-medium truncate max-w-[140px] text-slate-400">{label}</span>
+          <span className="text-sm font-medium text-slate-400 leading-tight">{label}</span>
         </div>
-        <Lock size={14} className="text-slate-300" />
+        <Lock size={14} className="text-slate-300 shrink-0" />
       </div>
     );
   }
@@ -68,16 +68,16 @@ const BlockNavItem = ({ id, label, status, active, accessible }: { id: number, l
       } ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
     >
       <div className="flex items-center space-x-3 z-10">
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-300 shrink-0 ${
           isCompleted ? 'bg-emerald-100 text-emerald-600' : 
           active ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md' :
           'bg-white border border-slate-200 text-slate-500 group-hover:border-violet-200'
         }`}>
           {isCompleted ? <CheckCircle size={14} /> : id}
         </div>
-        <span className={`text-sm font-medium truncate max-w-[140px] transition-colors ${active ? 'text-slate-900 font-bold' : 'text-slate-600'}`}>{label}</span>
+        <span className={`text-sm font-medium leading-tight transition-colors ${active ? 'text-slate-900 font-bold' : 'text-slate-600'}`}>{label}</span>
       </div>
-      {isLocked && <Lock size={14} className="text-slate-300" />}
+      {isLocked && <Lock size={14} className="text-slate-300 shrink-0" />}
       {active && <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-violet-500 to-fuchsia-500 rounded-l-2xl"></div>}
     </Link>
   );
@@ -121,7 +121,7 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
           {/* Main Navigation */}
           <div className="space-y-1">
             <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" active={isActive('/')} />
-            <SidebarItem to="/documents" icon={FileText} label="Documenti & Fonti" active={isActive('/documents')} />
+            <SidebarItem to="/documents" icon={FileText} label="Documenti & Fonti dati" active={isActive('/documents')} />
             <SidebarItem to="/assessment" icon={BarChart3} label="Assessment" active={isActive('/assessment')} />
             <SidebarItem to="/team" icon={Users} label="Team" active={isActive('/team')} />
             <SidebarItem to="/info" icon={Info} label="Info" active={isActive('/info')} />
@@ -135,11 +135,11 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
             </div>
             <div className="space-y-1">
               <BlockNavItem 
-                id={1} label="Profilo & Struttura" status={blocks[1].status} active={isBlockActive(1)} 
+                id={1} label="Profilo aziendale e struttura organizzativa" status={blocks[1].status} active={isBlockActive(1)} 
                 accessible={isOwner || (user?.assignedBlocks?.includes(1) ?? false)}
               />
               <BlockNavItem 
-                id={2} label="Dimensioni & Identità" status={blocks[2].status} active={isBlockActive(2)} 
+                id={2} label="Dimensioni, ciclo di vita e identità" status={blocks[2].status} active={isBlockActive(2)} 
                 accessible={isOwner || (user?.assignedBlocks?.includes(2) ?? false)}
               />
               <BlockNavItem 

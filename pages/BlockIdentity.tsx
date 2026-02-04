@@ -282,7 +282,7 @@ export const BlockIdentity = () => {
         {/* Sidebar */}
         <div className="lg:col-span-1 space-y-2">
           <div className="mb-4 px-2">
-            <h1 className="text-xl font-extrabold text-slate-900 leading-tight">Dimensioni & Identità</h1>
+            <h1 className="text-xl font-extrabold text-slate-900 leading-tight">Dimensioni, ciclo di vita e identità</h1>
             <p className="text-xs text-slate-500">Blocco 2 - Analisi LDE</p>
           </div>
           <NavButton id="2.1" label="Corporate Identity" icon={Fingerprint} completed={progress.s1} />
