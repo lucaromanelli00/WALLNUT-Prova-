@@ -24,7 +24,7 @@ import {
 
 // --- SHARED COMPONENTS ---
 
-const TextAreaInput = ({ label, value, onChange, audioKey, placeholder }: { label: string, value: string, onChange: (v: string) => void, audioKey: string, placeholder?: string }) => {
+const TextAreaInput = ({ label, value, onChange, audioKey, placeholder, className = "mb-8 last:mb-0" }: { label: string, value: string, onChange: (v: string) => void, audioKey: string, placeholder?: string, className?: string }) => {
   const { saveAudioAnswer, audioAnswers } = useApp();
   const [isTranscribing, setIsTranscribing] = useState(false);
 
@@ -42,7 +42,7 @@ const TextAreaInput = ({ label, value, onChange, audioKey, placeholder }: { labe
   };
   
   return (
-    <div className="mb-8 last:mb-0">
+    <div className={className}>
       <div className="flex justify-between items-start mb-3">
         <label className="block text-sm font-semibold text-slate-800 leading-relaxed max-w-[85%]">{label}</label>
         {isTranscribing && (
@@ -78,7 +78,7 @@ const TextAreaInput = ({ label, value, onChange, audioKey, placeholder }: { labe
 };
 
 const RadioGroup = ({ label, options, value, onChange }: { label: string, options: string[], value: string, onChange: (v: string) => void }) => (
-  <div className="mb-8">
+  <div>
     <label className="block text-sm font-semibold text-slate-800 mb-3">{label}</label>
     <div className="flex flex-wrap gap-3">
       {options.map(opt => (
@@ -105,7 +105,7 @@ const CheckboxGroup = ({ label, options, values, onChange }: { label: string, op
   };
 
   return (
-    <div className="mb-8">
+    <div>
       <label className="block text-sm font-semibold text-slate-800 mb-3">{label}</label>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {options.map(opt => {
@@ -142,7 +142,7 @@ const LikertScale = ({ label, value, onChange }: { label: string, value: string,
   ];
 
   return (
-    <div className="mb-10">
+    <div>
       <label className="block text-sm font-semibold text-slate-800 mb-6">{label}</label>
       <div className="relative flex justify-between items-center px-4">
         {/* Connection Line */}
@@ -171,12 +171,12 @@ const LikertScale = ({ label, value, onChange }: { label: string, value: string,
 };
 
 const DistributionSlider = ({ data, onChange }: { data: string, onChange: (v: string) => void }) => {
-  const [values, setValues] = useState({ presence: 33, autonomy: 33, results: 34 });
+  const [values, setValues] = useState({ presence: 30, autonomy: 30, results: 40 });
 
   useEffect(() => {
     try {
       const parsed = JSON.parse(data);
-      if (parsed.presence !== undefined) setValues(parsed);
+      if (typeof parsed.presence === 'number') setValues(parsed);
     } catch {
       // Keep default
     }
@@ -192,31 +192,36 @@ const DistributionSlider = ({ data, onChange }: { data: string, onChange: (v: st
   const isBalanced = total === 100;
 
   return (
-    <div className="mb-10 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+    <div className="w-full">
       <div className="flex justify-between items-center mb-6">
-        <label className="text-sm font-bold text-slate-800 uppercase tracking-wider">Quanto contano nella pratica?</label>
+        <label className="block text-sm font-semibold text-slate-800">Quanto contano nella pratica?</label>
         <div className={`text-xs font-bold px-3 py-1 rounded-full ${isBalanced ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
           Totale: {total}%
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
         {[{ k: 'presence', l: 'Presenza Fisica' }, { k: 'autonomy', l: 'Autonomia' }, { k: 'results', l: 'Risultati' }].map(item => (
           <div key={item.k}>
-            <div className="flex justify-between text-xs font-semibold text-slate-600 mb-2">
+            <div className="flex justify-between text-sm font-bold text-slate-700 mb-3">
               <span>{item.l}</span>
-              <span>{values[item.k as keyof typeof values]}%</span>
+              <span className="text-blue-600">{values[item.k as keyof typeof values]}%</span>
             </div>
             <input 
-              type="range" min="0" max="100" 
+              type="range" min="0" max="100" step="10"
               value={values[item.k as keyof typeof values]}
               onChange={e => handleChange(item.k as keyof typeof values, parseInt(e.target.value))}
               className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />
+            <div className="flex justify-between mt-2 px-1">
+               {[0, 20, 40, 60, 80, 100].map(v => (
+                 <span key={v} className="text-[10px] text-slate-400 font-medium">{v}%</span>
+               ))}
+            </div>
           </div>
         ))}
       </div>
-      {!isBalanced && <p className="text-xs text-red-500 font-bold mt-4 text-center">La somma deve essere 100% per salvare correttamente.</p>}
+      {!isBalanced && <p className="text-xs text-red-500 font-bold mt-3 text-center flex items-center justify-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> La somma deve essere 100%.</p>}
     </div>
   );
 };
@@ -268,7 +273,7 @@ const ExternalPartnersSection = ({ data, update }: { data: ProfileBlockData, upd
   };
 
   return (
-    <div className="mb-8">
+    <div>
       <label className="block text-sm font-semibold text-slate-800 mb-3">Quali figure esterne collaborano stabilmente con l’azienda?</label>
       <div className="space-y-3">
         {categories.map(cat => {
@@ -328,59 +333,78 @@ const Section1_1 = ({ data, update }: { data: ProfileBlockData, update: any }) =
           <h3 className="text-xl font-bold text-slate-900">Ruoli & Team</h3>
         </div>
         
-        {/* Q1: Organigram */}
-        <RadioGroup 
-          label="L’organigramma formale riflette il funzionamento reale dell’azienda?"
-          options={["Sì, in modo coerente", "Parzialmente", "No, in modo significativo"]}
-          value={data.organigramAdherence}
-          onChange={(val) => update({ organigramAdherence: val })}
-        />
-        
-        {data.organigramAdherence && data.organigramAdherence !== "Sì, in modo coerente" && (
-          <div className="pl-4 border-l-2 border-orange-200 mb-8 animate-in slide-in-from-left-4">
-            <TextAreaInput 
-              label="In quali ambiti si discosta maggiormente?"
-              value={data.organigramDivergence}
-              onChange={(val) => update({ organigramDivergence: val })}
-              audioKey="b1_organigramDivergence"
-            />
-          </div>
-        )}
+        <div className="divide-y divide-slate-100">
+            {/* Q1: Organigram */}
+            <div className="pb-10">
+                <RadioGroup 
+                label="L’organigramma formale riflette il funzionamento reale dell’azienda?"
+                options={["Sì, in modo coerente", "Parzialmente", "No, in modo significativo"]}
+                value={data.organigramAdherence}
+                onChange={(val) => update({ organigramAdherence: val })}
+                />
+                
+                {data.organigramAdherence && data.organigramAdherence !== "Sì, in modo coerente" && (
+                <div className="mt-6 pl-4 border-l-2 border-orange-200 animate-in slide-in-from-left-4">
+                    <TextAreaInput 
+                    label="In quali ambiti si discosta maggiormente?"
+                    value={data.organigramDivergence}
+                    onChange={(val) => update({ organigramDivergence: val })}
+                    audioKey="b1_organigramDivergence"
+                    className=""
+                    />
+                </div>
+                )}
+            </div>
 
-        {/* Q2: Key Figures */}
-        <TextAreaInput 
-          label="Chi sono le 3–5 figure chiave per il funzionamento dell’azienda oggi? (ruolo, ambito, responsabilità effettiva)"
-          value={data.keyFigures}
-          onChange={(val) => update({ keyFigures: val })}
-          audioKey="b1_keyFigures"
-        />
+            {/* Q2: Key Figures */}
+            <div className="py-10">
+                <TextAreaInput 
+                label="Chi sono le 3–5 figure chiave per il funzionamento dell’azienda oggi? (ruolo, ambito, responsabilità effettiva)"
+                value={data.keyFigures}
+                onChange={(val) => update({ keyFigures: val })}
+                audioKey="b1_keyFigures"
+                className=""
+                />
+            </div>
 
-        {/* Q3: Collaborating Teams */}
-        <TextAreaInput 
-          label="Quali funzioni collaborano maggiormente nella pratica?"
-          value={data.collaboratingTeams}
-          onChange={(val) => update({ collaboratingTeams: val })}
-          audioKey="b1_collaboratingTeams"
-        />
+            {/* Q3: Collaborating Teams */}
+            <div className="py-10">
+                <TextAreaInput 
+                label="Quali funzioni collaborano maggiormente nella pratica?"
+                value={data.collaboratingTeams}
+                onChange={(val) => update({ collaboratingTeams: val })}
+                audioKey="b1_collaboratingTeams"
+                className=""
+                />
+            </div>
 
-        {/* Q4: External Partners */}
-        <ExternalPartnersSection data={data} update={update} />
+            {/* Q4: External Partners */}
+            <div className="py-10">
+                <ExternalPartnersSection data={data} update={update} />
+            </div>
 
-        {/* Q5: Distinctive Skills */}
-        <TextAreaInput 
-          label="Quali competenze interne considerate oggi distintive o strategiche?"
-          value={data.distinctiveSkills}
-          onChange={(val) => update({ distinctiveSkills: val })}
-          audioKey="b1_distinctiveSkills"
-        />
+            {/* Q5: Distinctive Skills */}
+            <div className="py-10">
+                <TextAreaInput 
+                label="Quali competenze interne considerate oggi distintive o strategiche?"
+                value={data.distinctiveSkills}
+                onChange={(val) => update({ distinctiveSkills: val })}
+                audioKey="b1_distinctiveSkills"
+                className=""
+                />
+            </div>
 
-        {/* Q6: Missing Skills */}
-        <TextAreaInput 
-          label="Quali competenze risultano oggi mancanti o sottodimensionate?"
-          value={data.missingSkills}
-          onChange={(val) => update({ missingSkills: val })}
-          audioKey="b1_missingSkills"
-        />
+            {/* Q6: Missing Skills */}
+            <div className="pt-10">
+                <TextAreaInput 
+                label="Quali competenze risultano oggi mancanti o sottodimensionate?"
+                value={data.missingSkills}
+                onChange={(val) => update({ missingSkills: val })}
+                audioKey="b1_missingSkills"
+                className=""
+                />
+            </div>
+        </div>
       </div>
     </div>
   );
@@ -397,50 +421,64 @@ const Section1_2 = ({ data, update }: { data: ProfileBlockData, update: any }) =
           <h3 className="text-xl font-bold text-slate-900">Cultura Aziendale</h3>
         </div>
 
-        {/* Q1: Likert Scale */}
-        <LikertScale 
-          label="Come viene vissuto il rapporto tra azienda e individuo?"
-          value={data.individualRelationship}
-          onChange={(val) => update({ individualRelationship: val })}
-        />
+        <div className="divide-y divide-slate-100">
+            {/* Q1 */}
+            <div className="pb-10">
+                <LikertScale 
+                label="Come viene vissuto il rapporto tra azienda e individuo?"
+                value={data.individualRelationship}
+                onChange={(val) => update({ individualRelationship: val })}
+                />
+            </div>
 
-        {/* Q2: Distribution Slider */}
-        <DistributionSlider 
-          data={data.evaluationCriteria} 
-          onChange={(val) => update({ evaluationCriteria: val })}
-        />
+            {/* Q2 */}
+            <div className="py-10">
+                <DistributionSlider 
+                data={data.evaluationCriteria} 
+                onChange={(val) => update({ evaluationCriteria: val })}
+                />
+            </div>
 
-        {/* Q3: Rewarded Behaviors */}
-        <CheckboxGroup 
-          label="Quali comportamenti vengono premiati, anche implicitamente?"
-          options={["Proattività", "Velocità", "Affidabilità", "Allineamento gerarchico", "Innovazione", "Capacità relazionali"]}
-          values={data.rewardedBehaviors}
-          onChange={(val) => update({ rewardedBehaviors: val })}
-        />
+            {/* Q3 */}
+            <div className="py-10">
+                <CheckboxGroup 
+                label="Quali comportamenti vengono premiati, anche implicitamente?"
+                options={["Proattività", "Velocità", "Affidabilità", "Allineamento gerarchico", "Innovazione", "Capacità relazionali"]}
+                values={data.rewardedBehaviors}
+                onChange={(val) => update({ rewardedBehaviors: val })}
+                />
+            </div>
 
-        {/* Q4: Tolerated Behaviors */}
-        <CheckboxGroup 
-          label="Quali comportamenti vengono tollerati pur non essendo coerenti con i valori dichiarati?"
-          options={["Ritardi", "Scarsa comunicazione", "Centralizzazione eccessiva", "Resistenza al cambiamento", "Overworking"]}
-          values={data.toleratedBehaviors}
-          onChange={(val) => update({ toleratedBehaviors: val })}
-        />
+            {/* Q4 */}
+            <div className="py-10">
+                <CheckboxGroup 
+                label="Quali comportamenti vengono tollerati pur non essendo coerenti con i valori dichiarati?"
+                options={["Ritardi", "Scarsa comunicazione", "Centralizzazione eccessiva", "Resistenza al cambiamento", "Overworking"]}
+                values={data.toleratedBehaviors}
+                onChange={(val) => update({ toleratedBehaviors: val })}
+                />
+            </div>
 
-        {/* Q5: Change Reaction */}
-        <RadioGroup 
-          label="Come reagisce l’organizzazione al cambiamento?"
-          options={["Proattiva", "Pragmatica", "Reattiva", "Difensiva"]}
-          value={data.changeReaction}
-          onChange={(val) => update({ changeReaction: val })}
-        />
+            {/* Q5 */}
+            <div className="py-10">
+                <RadioGroup 
+                label="Come reagisce l’organizzazione al cambiamento?"
+                options={["Proattiva", "Pragmatica", "Reattiva", "Difensiva"]}
+                value={data.changeReaction}
+                onChange={(val) => update({ changeReaction: val })}
+                />
+            </div>
 
-        {/* Q6: Digital Attitude */}
-        <RadioGroup 
-          label="Il digitale è vissuto come:"
-          options={["Opportunità", "Necessità", "Imposizione"]}
-          value={data.digitalAttitude}
-          onChange={(val) => update({ digitalAttitude: val })}
-        />
+            {/* Q6 */}
+            <div className="pt-10">
+                <RadioGroup 
+                label="Il digitale è vissuto come:"
+                options={["Opportunità", "Necessità", "Imposizione"]}
+                value={data.digitalAttitude}
+                onChange={(val) => update({ digitalAttitude: val })}
+                />
+            </div>
+        </div>
       </div>
     </div>
   );

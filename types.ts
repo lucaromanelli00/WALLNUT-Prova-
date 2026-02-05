@@ -160,6 +160,10 @@ export interface IdentityBlockData {
   supportNeeded: string;
   businessModelChanges: string;
   goalMeasurement: string;
+  // NEW FIELDS
+  investmentAreas: string; // JSON String: { area: string, subCategories: string[] }[]
+  investmentStatus: string;
+  investmentHorizon: string;
 
   // 2.4 Learned Lessons
   obsoleteBeliefs: string;

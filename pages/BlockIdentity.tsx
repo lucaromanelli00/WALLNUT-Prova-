@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store';
 import { IdentityBlockData } from '../types';
@@ -18,7 +18,14 @@ import {
   CheckCircle,
   Lock,
   Sparkles,
-  Loader2
+  Loader2,
+  Zap,
+  Leaf,
+  Users,
+  TrendingUp,
+  Globe,
+  Plus,
+  Check
 } from 'lucide-react';
 
 // --- CONSTANTS: Question Configurations ---
@@ -48,7 +55,6 @@ const QUESTIONS_2_2: { key: keyof IdentityBlockData, label: string }[] = [
 ];
 
 const QUESTIONS_2_3: { key: keyof IdentityBlockData, label: string }[] = [
-  { key: 'strategicPriorities', label: "Quali sono oggi le 2-3 priorità strategiche più importanti?" },
   { key: 'futureVision', label: "Come viene immaginata l’azienda tra 3-5 anni?" },
   { key: 'targetMarkets', label: "Quali sono i mercati che l’azienda vuole esplorare o rafforzare?" },
   { key: 'businessLinesEvolution', label: "Quali linee di business avranno un ruolo crescente o decrescente?" },
@@ -97,9 +103,199 @@ const QUESTIONS_2_6: { key: keyof IdentityBlockData, label: string }[] = [
   { key: 'liquidityManagement', label: "Come vengono gestiti i rischi di liquidità?" },
 ];
 
+const INVESTMENT_CATEGORIES = [
+  {
+    id: 'innovation',
+    label: 'Innovazione & Tecnologia',
+    icon: Zap,
+    color: 'bg-blue-100 text-blue-600',
+    subs: [
+      'Ricerca e sviluppo / prototipazione',
+      'Trasformazione digitale e Industria 4.0–5.0',
+      'Cybersecurity e resilienza digitale'
+    ]
+  },
+  {
+    id: 'energy',
+    label: 'Transizione Energetica & Ambiente',
+    icon: Leaf,
+    color: 'bg-emerald-100 text-emerald-600',
+    subs: [
+      'Efficienza energetica',
+      'Energie rinnovabili',
+      'Economia circolare e riduzione impatti ambientali'
+    ]
+  },
+  {
+    id: 'people',
+    label: 'Persone, Competenze & Sicurezza',
+    icon: Users,
+    color: 'bg-purple-100 text-purple-600',
+    subs: [
+      'Formazione e sviluppo competenze',
+      'Salute e sicurezza sul lavoro',
+      'Benessere organizzativo e conformità'
+    ]
+  },
+  {
+    id: 'growth',
+    label: 'Crescita & Sviluppo Aziendale',
+    icon: TrendingUp,
+    color: 'bg-amber-100 text-amber-600',
+    subs: [
+      'Investimenti produttivi e macchinari',
+      'Modernizzazione e ampliamento della capacità',
+      'Rafforzamento organizzativo e qualità'
+    ]
+  },
+  {
+    id: 'market',
+    label: 'Mercati & Internazionalizzazione',
+    icon: Globe,
+    color: 'bg-indigo-100 text-indigo-600',
+    subs: [
+      'Export e mercati esteri',
+      'Fiere, missioni e attività promozionali',
+      'Canali digitali per le vendite internazionali'
+    ]
+  },
+  {
+    id: 'startup',
+    label: 'Startup, Finanza & Inclusione',
+    icon: Rocket,
+    color: 'bg-rose-100 text-rose-600',
+    subs: [
+      'Startup e nuova impresa',
+      'Accesso al credito e garanzie pubbliche',
+      'Inclusione, imprenditoria femminile/giovanile'
+    ]
+  }
+];
+
+// --- SUB-COMPONENTS ---
+
+const InvestmentPlanner = ({ data, onChange }: { data: string, onChange: (v: string) => void }) => {
+  const [selections, setSelections] = useState<{ area: string, subCategories: string[] }[]>([]);
+
+  useEffect(() => {
+    try {
+      if (data) setSelections(JSON.parse(data));
+    } catch { setSelections([]) }
+  }, [data]);
+
+  const toggleCategory = (areaLabel: string) => {
+    if (selections.some(s => s.area === areaLabel)) {
+      const newSelections = selections.filter(s => s.area !== areaLabel);
+      setSelections(newSelections);
+      onChange(JSON.stringify(newSelections));
+    } else {
+      const newSelections = [...selections, { area: areaLabel, subCategories: [] }];
+      setSelections(newSelections);
+      onChange(JSON.stringify(newSelections));
+    }
+  };
+
+  const toggleSubCategory = (areaLabel: string, sub: string) => {
+    const newSelections = selections.map(s => {
+      if (s.area === areaLabel) {
+        const subs = s.subCategories.includes(sub) 
+          ? s.subCategories.filter(x => x !== sub)
+          : [...s.subCategories, sub];
+        return { ...s, subCategories: subs };
+      }
+      return s;
+    });
+    setSelections(newSelections);
+    onChange(JSON.stringify(newSelections));
+  };
+
+  return (
+    <div className="mb-10">
+      <label className="block text-sm font-semibold text-slate-800 mb-6">
+        In quali ambiti l’azienda prevede investimenti o iniziative nei prossimi 12–24 mesi?
+      </label>
+      <div className="grid grid-cols-1 gap-4">
+        {INVESTMENT_CATEGORIES.map(cat => {
+          const isSelected = selections.some(s => s.area === cat.label);
+          const currentSelection = selections.find(s => s.area === cat.label);
+
+          return (
+            <div key={cat.id} className={`border rounded-xl transition-all duration-300 ${isSelected ? 'border-blue-500 bg-white shadow-md' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+              <div 
+                className={`p-4 flex items-center space-x-4 cursor-pointer rounded-xl transition-colors ${isSelected ? 'bg-blue-50/30' : ''}`}
+                onClick={() => toggleCategory(cat.label)}
+              >
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-600 text-white' : cat.color}`}>
+                  <cat.icon size={22} />
+                </div>
+                <div className="flex-1">
+                  <span className={`font-bold text-base block ${isSelected ? 'text-blue-900' : 'text-slate-700'}`}>{cat.label}</span>
+                  {isSelected && <span className="text-xs text-blue-500 font-medium">Selezionato</span>}
+                </div>
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'}`}>
+                   {isSelected && <Check size={14} className="text-white" />}
+                </div>
+              </div>
+
+              {isSelected && (
+                <div className="px-4 pb-6 pt-2 animate-in slide-in-from-top-2 fade-in duration-300">
+                  <div className="h-px bg-slate-100 mb-4"></div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Seleziona Focus Principali</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {cat.subs.map(sub => {
+                      const isSubSelected = currentSelection?.subCategories.includes(sub);
+                      return (
+                        <button 
+                          key={sub} 
+                          onClick={() => toggleSubCategory(cat.label, sub)}
+                          className={`flex items-start space-x-3 text-left p-3 rounded-xl border transition-all ${
+                            isSubSelected 
+                            ? 'bg-blue-50 border-blue-300 text-blue-900' 
+                            : 'bg-white border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className={`mt-0.5 w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${isSubSelected ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
+                            {isSubSelected && <Check size={12} className="text-white" />}
+                          </div>
+                          <span className="text-sm font-medium leading-snug">{sub}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const RadioGroup = ({ label, options, value, onChange }: { label: string, options: string[], value: string, onChange: (v: string) => void }) => (
+  <div className="mb-8 last:mb-0">
+    <label className="block text-sm font-semibold text-slate-800 mb-4">{label}</label>
+    <div className="flex flex-wrap gap-3">
+      {options.map(opt => (
+        <button
+          key={opt}
+          onClick={() => onChange(opt)}
+          className={`px-5 py-3 rounded-xl border text-sm font-bold transition-all shadow-sm ${
+            value === opt 
+            ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-200 ring-offset-1' 
+            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+          }`}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
 // --- SHARED COMPONENT FOR SECTIONS ---
 
-const QuestionList = ({ title, questions, data, update, icon: Icon, colorClass }: { title: string, questions: { key: keyof IdentityBlockData, label: string }[], data: IdentityBlockData, update: any, icon: any, colorClass: string }) => {
+const QuestionList = ({ title, questions, data, update, icon: Icon, colorClass, children }: { title: string, questions: { key: keyof IdentityBlockData, label: string }[], data: IdentityBlockData, update: any, icon: any, colorClass: string, children?: React.ReactNode }) => {
   const { saveAudioAnswer, audioAnswers } = useApp();
   const [transcribingKey, setTranscribingKey] = useState<string | null>(null);
 
@@ -130,13 +326,16 @@ const QuestionList = ({ title, questions, data, update, icon: Icon, colorClass }
           </div>
           <h3 className="text-xl font-bold text-slate-900">{title}</h3>
         </div>
+        
+        {children}
+
         <div className="divide-y divide-slate-100">
           {questions.map((q) => {
              const audioKey = `b2_${q.key}`;
              const isTranscribing = transcribingKey === q.key;
              
              return (
-              <div key={q.key} className="py-6 first:pt-0 last:pb-0 border-0">
+              <div key={q.key} className="py-8 first:pt-0 last:pb-0 border-0">
                 <div className="flex justify-between items-start mb-3">
                   <label className="block text-sm font-semibold text-slate-800 leading-relaxed max-w-[85%]">{q.label}</label>
                   {isTranscribing && (
@@ -194,6 +393,16 @@ export const BlockIdentity = () => {
     );
   }
 
+  // Calculate if investments are selected for conditional rendering
+  const hasInvestments = useMemo(() => {
+    try {
+      const parsed = JSON.parse(identityData.investmentAreas || '[]');
+      return Array.isArray(parsed) && parsed.length > 0;
+    } catch {
+      return false;
+    }
+  }, [identityData.investmentAreas]);
+
   // Progress Calculation
   const calculateProgress = () => {
     let filledFields = 0;
@@ -204,16 +413,27 @@ export const BlockIdentity = () => {
     
     allQuestions.forEach(q => { if(identityData[q.key]) filledFields++; });
 
-    const percentage = Math.min(100, Math.round((filledFields / allQuestions.length) * 100));
+    // Investment Plan extra weight
+    if (identityData.investmentStatus) filledFields++;
+    if (identityData.investmentHorizon) filledFields++;
+    if (identityData.investmentAreas && identityData.investmentAreas !== '[]') filledFields++;
+
+    const totalFields = allQuestions.length + 3; 
+    const percentage = Math.min(100, Math.round((filledFields / totalFields) * 100));
 
     // Section completion logic
     const checkSection = (qs: typeof QUESTIONS_2_1) => qs.every(q => (identityData[q.key] as string)?.length > 0);
+    const checkSection2_3 = () => {
+      const basic = QUESTIONS_2_3.every(q => (identityData[q.key] as string)?.length > 0);
+      const advanced = !!identityData.investmentStatus && !!identityData.investmentHorizon && identityData.investmentAreas !== '[]';
+      return basic && advanced;
+    };
 
     return { 
       percentage,
       s1: checkSection(QUESTIONS_2_1),
       s2: checkSection(QUESTIONS_2_2),
-      s3: checkSection(QUESTIONS_2_3),
+      s3: checkSection2_3(),
       s4: checkSection(QUESTIONS_2_4),
       s5: checkSection(QUESTIONS_2_5),
       s6: checkSection(QUESTIONS_2_6),
@@ -301,7 +521,34 @@ export const BlockIdentity = () => {
 
           {activeSection === '2.1' && <QuestionList title="Corporate Identity" questions={QUESTIONS_2_1} data={identityData} update={updateIdentityData} icon={Fingerprint} colorClass="bg-blue-600 text-blue-600" />}
           {activeSection === '2.2' && <QuestionList title="Timeline Evolutiva" questions={QUESTIONS_2_2} data={identityData} update={updateIdentityData} icon={History} colorClass="bg-amber-500 text-amber-500" />}
-          {activeSection === '2.3' && <QuestionList title="Piani di Sviluppo" questions={QUESTIONS_2_3} data={identityData} update={updateIdentityData} icon={Rocket} colorClass="bg-purple-600 text-purple-600" />}
+          
+          {activeSection === '2.3' && (
+            <QuestionList title="Piani di Sviluppo" questions={QUESTIONS_2_3} data={identityData} update={updateIdentityData} icon={Rocket} colorClass="bg-purple-600 text-purple-600">
+              {/* New Investment Planner Section */}
+              <div className="mb-12 border-b border-slate-100 pb-8">
+                <InvestmentPlanner data={identityData.investmentAreas} onChange={(v) => updateIdentityData({ investmentAreas: v })} />
+                
+                {hasInvestments && (
+                  <div className="space-y-8 animate-in fade-in slide-in-from-top-4 mt-8">
+                    <RadioGroup 
+                      label="In che fase si trovano oggi i vostri investimenti?"
+                      options={["Idea / pianificazione", "Progetto definito", "Investimento già avviato"]}
+                      value={identityData.investmentStatus}
+                      onChange={(v) => updateIdentityData({ investmentStatus: v })}
+                    />
+                    <div className="border-t border-slate-50 my-2"></div>
+                    <RadioGroup 
+                      label="Quando sarebbe ideale accedere a un incentivo pubblico?"
+                      options={["Entro 3 mesi", "Entro 6–12 mesi", "Oltre 12 mesi"]}
+                      value={identityData.investmentHorizon}
+                      onChange={(v) => updateIdentityData({ investmentHorizon: v })}
+                    />
+                  </div>
+                )}
+              </div>
+            </QuestionList>
+          )}
+
           {activeSection === '2.4' && <QuestionList title="Learned Lessons" questions={QUESTIONS_2_4} data={identityData} update={updateIdentityData} icon={GraduationCap} colorClass="bg-emerald-600 text-emerald-600" />}
           {activeSection === '2.5' && <QuestionList title="Mappatura Rischi" questions={QUESTIONS_2_5} data={identityData} update={updateIdentityData} icon={AlertTriangle} colorClass="bg-red-600 text-red-600" />}
           {activeSection === '2.6' && <QuestionList title="Documentazione Finanziaria" questions={QUESTIONS_2_6} data={identityData} update={updateIdentityData} icon={Banknote} colorClass="bg-slate-800 text-slate-800" />}
