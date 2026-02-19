@@ -174,8 +174,15 @@ const INVESTMENT_CATEGORIES = [
 
 // --- SUB-COMPONENTS ---
 
+interface SelectionItem {
+  area: string;
+  subCategories: string[];
+  status?: string;
+  horizon?: string;
+}
+
 const InvestmentPlanner = ({ data, onChange }: { data: string, onChange: (v: string) => void }) => {
-  const [selections, setSelections] = useState<{ area: string, subCategories: string[] }[]>([]);
+  const [selections, setSelections] = useState<SelectionItem[]>([]);
 
   useEffect(() => {
     try {
@@ -209,6 +216,17 @@ const InvestmentPlanner = ({ data, onChange }: { data: string, onChange: (v: str
     onChange(JSON.stringify(newSelections));
   };
 
+  const updateDetails = (areaLabel: string, field: 'status' | 'horizon', value: string) => {
+    const newSelections = selections.map(s => {
+      if (s.area === areaLabel) {
+        return { ...s, [field]: value };
+      }
+      return s;
+    });
+    setSelections(newSelections);
+    onChange(JSON.stringify(newSelections));
+  };
+
   return (
     <div className="mb-10">
       <label className="block text-sm font-semibold text-slate-800 mb-6">
@@ -220,9 +238,9 @@ const InvestmentPlanner = ({ data, onChange }: { data: string, onChange: (v: str
           const currentSelection = selections.find(s => s.area === cat.label);
 
           return (
-            <div key={cat.id} className={`border rounded-xl transition-all duration-300 ${isSelected ? 'border-blue-500 bg-white shadow-md' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+            <div key={cat.id} className={`border rounded-xl transition-all duration-300 ${isSelected ? 'border-blue-500 bg-white shadow-md ring-1 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
               <div 
-                className={`p-4 flex items-center space-x-4 cursor-pointer rounded-xl transition-colors ${isSelected ? 'bg-blue-50/30' : ''}`}
+                className={`p-4 flex items-center space-x-4 cursor-pointer rounded-t-xl transition-colors ${isSelected ? 'bg-blue-50/50' : ''}`}
                 onClick={() => toggleCategory(cat.label)}
               >
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-600 text-white' : cat.color}`}>
@@ -240,28 +258,83 @@ const InvestmentPlanner = ({ data, onChange }: { data: string, onChange: (v: str
               {isSelected && (
                 <div className="px-4 pb-6 pt-2 animate-in slide-in-from-top-2 fade-in duration-300">
                   <div className="h-px bg-slate-100 mb-4"></div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Seleziona Focus Principali</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {cat.subs.map(sub => {
-                      const isSubSelected = currentSelection?.subCategories.includes(sub);
-                      return (
-                        <button 
-                          key={sub} 
-                          onClick={() => toggleSubCategory(cat.label, sub)}
-                          className={`flex items-start space-x-3 text-left p-3 rounded-xl border transition-all ${
-                            isSubSelected 
-                            ? 'bg-blue-50 border-blue-300 text-blue-900' 
-                            : 'bg-white border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className={`mt-0.5 w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${isSubSelected ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
-                            {isSubSelected && <Check size={12} className="text-white" />}
-                          </div>
-                          <span className="text-sm font-medium leading-snug">{sub}</span>
-                        </button>
-                      );
-                    })}
+                  
+                  {/* Subcategories */}
+                  <div className="mb-6">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Seleziona Focus Principali</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {cat.subs.map(sub => {
+                        const isSubSelected = currentSelection?.subCategories.includes(sub);
+                        return (
+                            <button 
+                            key={sub} 
+                            onClick={() => toggleSubCategory(cat.label, sub)}
+                            className={`flex items-start space-x-3 text-left p-3 rounded-xl border transition-all ${
+                                isSubSelected 
+                                ? 'bg-blue-50 border-blue-300 text-blue-900' 
+                                : 'bg-white border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-slate-50'
+                            }`}
+                            >
+                            <div className={`mt-0.5 w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${isSubSelected ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
+                                {isSubSelected && <Check size={12} className="text-white" />}
+                            </div>
+                            <span className="text-sm font-medium leading-snug">{sub}</span>
+                            </button>
+                        );
+                        })}
+                    </div>
                   </div>
+
+                  {/* Specific Questions for this Category */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <TrendingUp size={14} />
+                        Dettagli Strategici per {cat.label}
+                    </p>
+                    
+                    <div className="space-y-5">
+                        {/* Phase */}
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-2">In che fase si trovano oggi questi investimenti?</label>
+                            <div className="flex flex-wrap gap-2">
+                                {["Idea / pianificazione", "Progetto definito", "Investimento già avviato"].map(opt => (
+                                    <button
+                                        key={opt}
+                                        onClick={() => updateDetails(cat.label, 'status', opt)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                                            currentSelection?.status === opt
+                                            ? 'bg-blue-600 text-white border-blue-600'
+                                            : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {opt}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Horizon */}
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-2">Quando sarebbe ideale accedere a un incentivo?</label>
+                            <div className="flex flex-wrap gap-2">
+                                {["Entro 3 mesi", "Entro 6–12 mesi", "Oltre 12 mesi"].map(opt => (
+                                    <button
+                                        key={opt}
+                                        onClick={() => updateDetails(cat.label, 'horizon', opt)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                                            currentSelection?.horizon === opt
+                                            ? 'bg-emerald-600 text-white border-emerald-600'
+                                            : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {opt}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                  </div>
+
                 </div>
               )}
             </div>
@@ -414,18 +487,30 @@ export const BlockIdentity = () => {
     allQuestions.forEach(q => { if(identityData[q.key]) filledFields++; });
 
     // Investment Plan extra weight
-    if (identityData.investmentStatus) filledFields++;
-    if (identityData.investmentHorizon) filledFields++;
-    if (identityData.investmentAreas && identityData.investmentAreas !== '[]') filledFields++;
+    // Modified: Check if parsed JSON has status/horizon filled for each item instead of global string
+    try {
+        const parsed = JSON.parse(identityData.investmentAreas || '[]');
+        if (parsed.length > 0) {
+            // Count completed items
+            const completedItems = parsed.filter((i: any) => i.status && i.horizon).length;
+            if (completedItems === parsed.length) filledFields += 2; // Equivalent to filling status + horizon
+        }
+    } catch {}
 
-    const totalFields = allQuestions.length + 3; 
+    const totalFields = allQuestions.length + 2; 
     const percentage = Math.min(100, Math.round((filledFields / totalFields) * 100));
 
     // Section completion logic
     const checkSection = (qs: typeof QUESTIONS_2_1) => qs.every(q => (identityData[q.key] as string)?.length > 0);
     const checkSection2_3 = () => {
       const basic = QUESTIONS_2_3.every(q => (identityData[q.key] as string)?.length > 0);
-      const advanced = !!identityData.investmentStatus && !!identityData.investmentHorizon && identityData.investmentAreas !== '[]';
+      let advanced = false;
+      try {
+          const parsed = JSON.parse(identityData.investmentAreas || '[]');
+          if (parsed.length === 0) advanced = true; // No investments selected is a valid state if intentional
+          else advanced = parsed.every((i: any) => i.status && i.horizon);
+      } catch { advanced = false }
+      
       return basic && advanced;
     };
 
@@ -527,24 +612,6 @@ export const BlockIdentity = () => {
               {/* New Investment Planner Section */}
               <div className="mb-12 border-b border-slate-100 pb-8">
                 <InvestmentPlanner data={identityData.investmentAreas} onChange={(v) => updateIdentityData({ investmentAreas: v })} />
-                
-                {hasInvestments && (
-                  <div className="space-y-8 animate-in fade-in slide-in-from-top-4 mt-8">
-                    <RadioGroup 
-                      label="In che fase si trovano oggi i vostri investimenti?"
-                      options={["Idea / pianificazione", "Progetto definito", "Investimento già avviato"]}
-                      value={identityData.investmentStatus}
-                      onChange={(v) => updateIdentityData({ investmentStatus: v })}
-                    />
-                    <div className="border-t border-slate-50 my-2"></div>
-                    <RadioGroup 
-                      label="Quando sarebbe ideale accedere a un incentivo pubblico?"
-                      options={["Entro 3 mesi", "Entro 6–12 mesi", "Oltre 12 mesi"]}
-                      value={identityData.investmentHorizon}
-                      onChange={(v) => updateIdentityData({ investmentHorizon: v })}
-                    />
-                  </div>
-                )}
               </div>
             </QuestionList>
           )}
